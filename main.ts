@@ -276,10 +276,9 @@ namespace AQbit {
         
 	    
 	writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
-	let sizeofbuff = rxBufferedSize()
-	basic.showNumber(sizeofbuff)
-	let response2 = serial.readBuffer(sizeofbuff)
-        for (let index = 0; index <= sizeofbuff-1; index++) {
+	    
+	let response2 = serial.readBuffer(64)
+        for (let index = 0; index <= 64-1; index++) {
 	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
 		basic.showString(String.fromCharCode(num2))
             basic.pause(500)
