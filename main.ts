@@ -276,11 +276,23 @@ namespace AQbit {
         let response2 = serial.readBuffer(32)
         for (let index = 0; index <= 31; index++) {
 	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
-            basic.showNumber(num2)
+		basic.showString(String.fromCharCode(num2))
             basic.pause(500)
         }
         writeToSerial("AT+CWMODE=1", 5000)
+	let response2 = serial.readBuffer(32)
+        for (let index = 0; index <= 31; index++) {
+	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
+		basic.showString(String.fromCharCode(num2))
+            basic.pause(500)
+        }
         writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
+	let response2 = serial.readBuffer(32)
+        for (let index = 0; index <= 31; index++) {
+	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
+		basic.showString(String.fromCharCode(num2))
+            basic.pause(500)
+        }
         basic.showIcon(IconNames.Heart)
         writeToSerial("AT+CWRECONNCFG=30,500", 5000)
         basic.showIcon(IconNames.Yes)
