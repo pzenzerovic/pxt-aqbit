@@ -272,33 +272,19 @@ namespace AQbit {
     export function connectToWiFiNetwork(ssid: string, key: string): void {
         connectToWiFiBit()
         writeToSerial("AT+RST", 2000)
-//        let response2 = serial.readBuffer(32)
-//        for (let index = 0; index <= 31; index++) {
-//	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
-//		basic.showString(String.fromCharCode(num2))
-//            basic.pause(500)
-//        }
-//        writeToSerial("AT+CWMODE=1", 5000)
-//	response2 = serial.readBuffer(32)
-//       for (let index = 0; index <= 31; index++) {
-//	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
-//		basic.showString(String.fromCharCode(num2))
-//            basic.pause(500)
-//        }
+        writeToSerial("AT+CWMODE=1", 5000)
 	
+	serial.setRxBufferSize(32)
         writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
-        basic.showIcon(IconNames.Heart)
-        writeToSerial("AT+CWRECONNCFG=30,500", 5000)
-        basic.showIcon(IconNames.Yes)
-	    
-	serial.setRxBufferSize(127)
-        writeToSerial("AT+CWJAP?", 6000)
 	let response2 = serial.readBuffer(127)
         for (let index = 0; index <= 126; index++) {
 	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
 		basic.showString(String.fromCharCode(num2))
             basic.pause(500)
         }
+	    
+	writeToSerial("AT+CWRECONNCFG=30,500", 5000)
+        writeToSerial("AT+CWJAP?", 6000)
 	basic.showIcon(IconNames.Happy)
     }
 
