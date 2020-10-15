@@ -291,10 +291,10 @@ namespace AQbit {
         writeToSerial("AT+CWRECONNCFG=30,500", 5000)
         basic.showIcon(IconNames.Yes)
 	    
-	serial.setRxBufferSize(64)
+	serial.setRxBufferSize(32)
         writeToSerial("AT+CWJAP?", 6000)
-	let response2 = serial.readBuffer(64)
-        for (let index = 0; index <= 63; index++) {
+	let response2 = serial.readBuffer(32)
+        for (let index = 0; index <= 31; index++) {
 	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
 		basic.showString(String.fromCharCode(num2))
             basic.pause(500)
