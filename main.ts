@@ -271,7 +271,6 @@ namespace AQbit {
     //% blockId="aqb_wifi_on" block="connect to WiFi network %ssid, %key"
     export function connectToWiFiNetwork(ssid: string, key: string): void {
         connectToWiFiBit()
-        serial.setRxBufferSize(64)
         writeToSerial("AT+RST", 2000)
 //        let response2 = serial.readBuffer(32)
 //        for (let index = 0; index <= 31; index++) {
@@ -286,6 +285,8 @@ namespace AQbit {
 //		basic.showString(String.fromCharCode(num2))
 //            basic.pause(500)
 //        }
+	
+	serial.setRxBufferSize(64)
         writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
 	let response2 = serial.readBuffer(64)
         for (let index = 0; index <= 63; index++) {
