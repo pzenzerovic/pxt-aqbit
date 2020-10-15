@@ -293,7 +293,7 @@ namespace AQbit {
 	    
 	serial.setRxBufferSize(127)
         writeToSerial("AT+CWJAP?", 6000)
-	let response2 = serial.readBuffer(32)
+	let response2 = serial.readBuffer(127)
         for (let index = 0; index <= 126; index++) {
 	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
 		basic.showString(String.fromCharCode(num2))
