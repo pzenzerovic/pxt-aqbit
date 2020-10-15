@@ -271,7 +271,10 @@ namespace AQbit {
     //% blockId="aqb_wifi_on" block="connect to WiFi network %ssid, %key"
     export function connectToWiFiNetwork(ssid: string, key: string): void {
         connectToWiFiBit()
+        serial.setRxBufferSize(4)
         writeToSerial("AT+RST", 2000)
+        let response2 = serial.readBuffer(4)
+        basic.showString("" + (response2))
         writeToSerial("AT+CWMODE=1", 5000)
         writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
         basic.showIcon(IconNames.Heart)
