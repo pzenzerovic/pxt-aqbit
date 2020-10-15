@@ -274,6 +274,7 @@ namespace AQbit {
         writeToSerial("AT+RST", 2000)
         writeToSerial("AT+CWMODE=1", 5000)
         writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
+        basic.showIcon(IconNames.Heart)
     }
 
 /*
