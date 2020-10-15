@@ -273,9 +273,10 @@ namespace AQbit {
         connectToWiFiBit()
         writeToSerial("AT+RST", 2000)
         writeToSerial("AT+CWMODE=1", 5000)
+        writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
 	
 	serial.setRxBufferSize(32)
-        writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
+	writeToSerial("AT+CWRECONNCFG=30,500", 5000)
 	let response2 = serial.readBuffer(32)
         for (let index = 0; index <= 31; index++) {
 	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
@@ -283,8 +284,6 @@ namespace AQbit {
             basic.pause(500)
         }
 	    
-	writeToSerial("AT+CWRECONNCFG=30,500", 5000)
-        writeToSerial("AT+CWJAP?", 6000)
 	basic.showIcon(IconNames.Happy)
     }
 
