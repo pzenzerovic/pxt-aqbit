@@ -273,15 +273,7 @@ namespace AQbit {
         connectToWiFiBit()
         writeToSerial("AT+RST", 2000)
         writeToSerial("AT+CWMODE=1", 5000)
-        
-	serial.setRxBufferSize(64)    
 	writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
-	let response2 = serial.readBuffer(64)
-        for (let index = 0; index <= 64-1; index++) {
-	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
-		basic.showString(String.fromCharCode(num2))
-            basic.pause(500)
-        }
 	    
 	//serial.setRxBufferSize(32)
 	writeToSerial("AT+CWRECONNCFG=30,500", 5000)
