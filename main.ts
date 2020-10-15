@@ -275,7 +275,7 @@ namespace AQbit {
         writeToSerial("AT+CWMODE=1", 5000)
         writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
         basic.showIcon(IconNames.Heart)
-        writeToSerial("AT+CWRECONNCFG=1,100", 5000)
+        writeToSerial("AT+CWRECONNCFG=30,500", 5000)
         basic.showIcon(IconNames.Yes)
     }
 
