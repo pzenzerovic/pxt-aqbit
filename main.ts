@@ -273,22 +273,22 @@ namespace AQbit {
         connectToWiFiBit()
         serial.setRxBufferSize(32)
         writeToSerial("AT+RST", 2000)
-        let response2 = serial.readBuffer(32)
-        for (let index = 0; index <= 31; index++) {
-	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
-		basic.showString(String.fromCharCode(num2))
-            basic.pause(500)
-        }
-        writeToSerial("AT+CWMODE=1", 5000)
-	response2 = serial.readBuffer(32)
-        for (let index = 0; index <= 31; index++) {
-	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
-		basic.showString(String.fromCharCode(num2))
-            basic.pause(500)
-        }
+//        let response2 = serial.readBuffer(32)
+//        for (let index = 0; index <= 31; index++) {
+//	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
+//		basic.showString(String.fromCharCode(num2))
+//            basic.pause(500)
+//        }
+//        writeToSerial("AT+CWMODE=1", 5000)
+//	response2 = serial.readBuffer(32)
+//       for (let index = 0; index <= 31; index++) {
+//	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
+//		basic.showString(String.fromCharCode(num2))
+//            basic.pause(500)
+//        }
         writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
-	response2 = serial.readBuffer(32)
-        for (let index = 0; index <= 31; index++) {
+	let response2 = serial.readBuffer(64)
+        for (let index = 0; index <= 63; index++) {
 	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
 		basic.showString(String.fromCharCode(num2))
             basic.pause(500)
