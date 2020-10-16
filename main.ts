@@ -357,12 +357,21 @@ namespace AQbit {
     //% weight=92
     //% blockId="aqb_send_data" block="send data|temperature %temperature|pressure %pressure|humidity %humidity|PM %PM|token %token"
     export function sendData(temperature: number, pressure: number, humidity: number, PM: number, token: string): void {
-        executeHttpMethod(
+        serial.setRxBufferSize(32)
+	executeHttpMethod(
             HttpMethod.GET,
             "134.209.242.221",
             80,
             "/communicate/?temperature=" + Math.trunc(temperature) + "&humidity=" + humidity + "&pressure=" + pressure + "&pm=" + PM + "&token=" + token
         )
+	let response2 = serial.readBuffer(32)
+        for (let index = 0; index <= 31; index++) {
+	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
+		basic.showString(String.fromCharCode(num2))
+            basic.pause(500)
+        }
+	    
+	    
     }
 
     /**
