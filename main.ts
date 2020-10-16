@@ -276,7 +276,7 @@ namespace AQbit {
 	writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
 	    
 	//serial.setRxBufferSize(32)
-	writeToSerial("AT+CWRECONNCFG=30,500", 5000)
+	writeToSerial("AT+CWRECONNCFG=30,990", 5000)
 	//let response2 = serial.readBuffer(32)
         //for (let index = 0; index <= 31; index++) {
 	//        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
@@ -363,15 +363,7 @@ namespace AQbit {
             "134.209.242.221",
             80,
             "/communicate/?temperature=" + Math.trunc(temperature) + "&humidity=" + humidity + "&pressure=" + pressure + "&pm=" + PM + "&token=" + token
-        )
-	let response2 = serial.readBuffer(32)
-        for (let index = 0; index <= 31; index++) {
-	        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
-		basic.showString(String.fromCharCode(num2))
-            basic.pause(500)
-        }
-	    
-	    
+        )    
     }
 
     /**
