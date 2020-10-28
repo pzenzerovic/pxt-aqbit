@@ -271,12 +271,12 @@ namespace AQbit {
     //% blockId="aqb_wifi_on" block="connect to WiFi network %ssid, %key"
     export function connectToWiFiNetwork(ssid: string, key: string): void {
         connectToWiFiBit()
-        writeToSerial("AT+RST", 2000)
+        writeToSerial("AT+RST", 5000)
 	writeToSerial("ATE0", 2000)
 	writeToSerial("AT+SLEEP=0", 2000)
-	writeToSerial("ATE+RFPOWER=82", 2000)    
+	writeToSerial("AT+RFPOWER=82", 2000)    
         writeToSerial("AT+CWMODE=1", 5000)
-	writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 6000)
+	writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 15000)
 	    
 	//serial.setRxBufferSize(32)
 	writeToSerial("AT+CWRECONNCFG=30,990", 5000)
