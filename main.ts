@@ -279,7 +279,7 @@ namespace AQbit {
 	writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 15000)
 	    
 	//serial.setRxBufferSize(32)
-	writeToSerial("AT+CWRECONNCFG=30,990", 5000)
+	writeToSerial("AT+CWRECONNCFG=30,99", 5000)
 	//let response2 = serial.readBuffer(32)
         //for (let index = 0; index <= 31; index++) {
 	//        let num2 = response2.getNumber(NumberFormat.UInt8LE, index)
