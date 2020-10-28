@@ -31,6 +31,8 @@ namespace AQbit {
             SerialPin.P0,
             BaudRate.BaudRate9600
         )
+	led.unplot(2,3)
+	led.plot(2,4)
     }
 
     function verifyBytes(response: Buffer): boolean {
@@ -49,11 +51,13 @@ namespace AQbit {
     //% weight=100
     //% blockId="aqb_pms_pasive" block="put PMS in passive mode"
     export function putPMSInPassiveMode(): void {
-        pins.digitalWritePin(DigitalPin.P13, 1)
+        led.plot(0, 0)
+	pins.digitalWritePin(DigitalPin.P13, 1)
         watchdogRunTime = input.runningTime()
         watchdogIsActive = true
-        basic.clearScreen()
+        //basic.clearScreen()
         serialToPMS()
+	led.plot(0, 1)
         serial.setRxBufferSize(32)
         let request = pins.createBuffer(7);
         request.setNumber(NumberFormat.UInt8LE, 0, 66);
@@ -63,14 +67,20 @@ namespace AQbit {
         request.setNumber(NumberFormat.UInt8LE, 4, 0);
         request.setNumber(NumberFormat.UInt8LE, 5, 1);
         request.setNumber(NumberFormat.UInt8LE, 6, 112);
+	led.plot(0, 2)
         serial.writeBuffer(request)
         basic.pause(500)
+	led.plot(0, 3)
         let response = serial.readBuffer(32)
         if (!verifyBytes(response)) {
             serial.writeBuffer(request)
             basic.pause(500)
         }
         watchdogIsActive = false
+	led.unplot(0, 0)
+	led.unplot(0, 1)
+	led.unplot(0, 2)
+	led.unplot(0, 3)
     }
 
     /**
@@ -81,9 +91,11 @@ namespace AQbit {
     export function readPMS(): number {
         watchdogRunTime = input.runningTime()
         watchdogIsActive = true
-        basic.clearScreen()
+        //basic.clearScreen()
+	led.plot(1, 0)
         serialToPMS()
         serial.setRxBufferSize(32)
+	led.plot(1, 1)
         let request = pins.createBuffer(7);
         request.setNumber(NumberFormat.UInt8LE, 0, 66);
         request.setNumber(NumberFormat.UInt8LE, 1, 77);
@@ -94,6 +106,7 @@ namespace AQbit {
         request.setNumber(NumberFormat.UInt8LE, 6, 113);
         serial.writeBuffer(request)
         basic.pause(1000)
+	led.plot(1, 2)
         let response = serial.readBuffer(32)
         if (verifyBytes(response)) {
             watchdogIsActive = false
@@ -116,8 +129,13 @@ namespace AQbit {
                 watchdogIsActive = false
                 return -1
             }
+	led.plot(1, 3)
         }
         watchdogIsActive = false
+	led.unplot(1, 0)
+	led.unplot(1, 1)
+	led.unplot(1, 2)
+	led.unplot(1, 3)
     }
 
 
@@ -219,7 +237,9 @@ namespace AQbit {
     //% weight=98
     //% blockId="aqb_read_temperature" block="read BME temperature"
     export function readBMETemperature(): number {
+	led.plot(2, 0)
         get()
+	led.unplot(2, 0)
         return T - 2
     }
 
@@ -229,7 +249,9 @@ namespace AQbit {
     //% weight=97
     //% blockId="aqb_read_humidity" block="read humidity"
     export function readHumidity(): number {
-        get()
+        led.plot(2, 1)
+	get()
+	led.unplot(2, 1)   
         return H
     }
 
@@ -239,7 +261,9 @@ namespace AQbit {
     //% weight=96
     //% blockId="aqb_read_pressure" block="read pressure"
     export function readPressure(): number {
+	led.plot(2, 2)
         get()
+	led.unplot(2,2)
         return P
     }
 
@@ -259,6 +283,8 @@ namespace AQbit {
             SerialPin.P8,
             BaudRate.BaudRate115200
         )
+	led.unplot(2,4)
+	led.plot(2,3)
         basic.pause(100)
     }
 
@@ -271,12 +297,14 @@ namespace AQbit {
     //% blockId="aqb_wifi_on" block="connect to WiFi network %ssid, %key"
     export function connectToWiFiNetwork(ssid: string, key: string): void {
         connectToWiFiBit()
+	led.plot(3,0)
         writeToSerial("AT+RST", 5000)
 	//writeToSerial("ATE0", 2000)
 	writeToSerial("AT+SLEEP=0", 2000)
 	writeToSerial("AT+RFPOWER=82", 2000)    
         writeToSerial("AT+CWMODE=1", 5000)
 	writeToSerial("AT+CWRECONNCFG=30,99", 5000)
+	led.plot(3,1)
 	writeToSerial("AT+CWJAP=\"" + ssid + "\",\"" + key + "\"", 15000)
 	    
 	//serial.setRxBufferSize(32)
@@ -287,8 +315,9 @@ namespace AQbit {
 	//	basic.showString(String.fromCharCode(num2))
         //    basic.pause(500)
         //}
-	    
-	basic.showIcon(IconNames.Happy)
+	led.unplot(3,0)
+	led.unplot(3,1)
+	//basic.showIcon(IconNames.Happy)
     }
 
 /*
@@ -304,7 +333,8 @@ namespace AQbit {
     //% weight=94
     //% blockId="aqb_http_method" block="execute HTTP method %method|host: %host|port: %port|path: %urlPath||headers: %headers|body: %body"
     function executeHttpMethod(method: HttpMethod, host: string, port: number, urlPath: string, headers?: string, body?: string): void {
-        connectToWiFiBit()
+        led.plot(4,0)
+	connectToWiFiBit()
         let myMethod: string
         switch (method) {
             case HttpMethod.GET: myMethod = "GET"; break;
@@ -329,8 +359,13 @@ namespace AQbit {
         }
         data += "\u000D" + "\u000A"
         writeToSerial("AT+CIPSEND=" + (data.length + 2), pauseBaseValue * 3)
+	led.plot(4,1)
         writeToSerial(data, pauseBaseValue * 6)
+	led.plot(4,2)
         writeToSerial("AT+CIPCLOSE", pauseBaseValue * 3)
+	led.unplot(4,0)
+	led.unplot(4,1)
+	led.unplot(4,2)
     }
 
     /**
