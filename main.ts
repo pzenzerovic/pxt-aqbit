@@ -110,6 +110,10 @@ namespace AQbit {
         let response = serial.readBuffer(32)
         if (verifyBytes(response)) {
             watchdogIsActive = false
+	    led.unplot(1, 0)
+	    led.unplot(1, 1)
+	    led.unplot(1, 2)
+	    led.unplot(1, 3)
             return response[13]
         } else {
             request.setNumber(NumberFormat.UInt8LE, 0, 66);
@@ -124,6 +128,10 @@ namespace AQbit {
             response = serial.readBuffer(32)
             if (verifyBytes(response)) {
                 watchdogIsActive = false
+		led.unplot(1, 0)
+	        led.unplot(1, 1)
+	        led.unplot(1, 2)
+	        led.unplot(1, 3)
                 return response[13]
             } else {
                 watchdogIsActive = false
