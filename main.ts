@@ -426,7 +426,7 @@ namespace AQbit {
     export function preventSensorBlocking(): void {
         while (true) {
                 if (watchdogIsActive){
-		    if (input.runningTime() - watchdogRunTime) > 20000) {
+		    if (input.runningTime() - watchdogRunTime > 20000) {
                     control.reset()
 		    }
                 }
