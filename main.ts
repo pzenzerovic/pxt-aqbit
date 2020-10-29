@@ -58,8 +58,8 @@ namespace AQbit {
         //basic.clearScreen()
         serialToPMS()
 	led.plot(0, 1)
-        //serial.setRxBufferSize(32)
-	serial.setRxBufferSize(0)
+        serial.setRxBufferSize(32)
+	//serial.setRxBufferSize(0)
         let request = pins.createBuffer(7);
         request.setNumber(NumberFormat.UInt8LE, 0, 66);
         request.setNumber(NumberFormat.UInt8LE, 1, 77);
@@ -96,8 +96,8 @@ namespace AQbit {
         //basic.clearScreen()
 	led.plot(1, 0)
         serialToPMS()
-        //serial.setRxBufferSize(32)
-	serial.setRxBufferSize(0)
+        serial.setRxBufferSize(32)
+	//serial.setRxBufferSize(0)
 	led.plot(1, 1)
         let request = pins.createBuffer(7);
         request.setNumber(NumberFormat.UInt8LE, 0, 66);
