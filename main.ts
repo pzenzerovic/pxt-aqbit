@@ -58,7 +58,7 @@ namespace AQbit {
         //basic.clearScreen()
         serialToPMS()
 	led.plot(0, 1)
-        //serial.setRxBufferSize(32)
+        serial.setRxBufferSize(32)
 	//serial.setRxBufferSize(0)
         let request = pins.createBuffer(7);
         request.setNumber(NumberFormat.UInt8LE, 0, 66);
@@ -72,8 +72,8 @@ namespace AQbit {
         serial.writeBuffer(request)
         basic.pause(500)
 	led.plot(0, 3)
-        //let response = serial.readBuffer(32)
-        let response = serial.readBuffer(0)
+        let response = serial.readBuffer(32)
+        //let response = serial.readBuffer(0)
 	if (!verifyBytes(response)) {
             serial.writeBuffer(request)
             basic.pause(500)
@@ -96,7 +96,7 @@ namespace AQbit {
         //basic.clearScreen()
 	led.plot(1, 0)
         serialToPMS()
-        //serial.setRxBufferSize(32)
+        serial.setRxBufferSize(32)
 	//serial.setRxBufferSize(0)
 	led.plot(1, 1)
         let request = pins.createBuffer(7);
@@ -110,8 +110,8 @@ namespace AQbit {
         serial.writeBuffer(request)
         basic.pause(1000)
 	led.plot(1, 2)
-        //let response = serial.readBuffer(32)
-	let response = serial.readBuffer(0)
+        let response = serial.readBuffer(32)
+	//let response = serial.readBuffer(0)
         if (verifyBytes(response)) {
             watchdogIsActive = false
 	    led.unplot(1, 0)
@@ -129,8 +129,8 @@ namespace AQbit {
             request.setNumber(NumberFormat.UInt8LE, 6, 113);
             serial.writeBuffer(request)
             basic.pause(1000)
-            //response = serial.readBuffer(32)
-            response = serial.readBuffer(0)
+            response = serial.readBuffer(32)
+            //response = serial.readBuffer(0)
             if (verifyBytes(response)) {
                 watchdogIsActive = false
 		led.unplot(1, 0)
