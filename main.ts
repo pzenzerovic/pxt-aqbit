@@ -425,10 +425,12 @@ namespace AQbit {
     //% blockId="aqb_watchdog" block="prevent sensor blocking"
     export function preventSensorBlocking(): void {
         while (true) {
-                if (watchdogIsActive && ((input.runningTime() - watchdogRunTime) > 20000)) {
+                if (watchdogIsActive){
+		    if ((input.runningTime() - watchdogRunTime) > 20000)) {
                     control.reset()
+		    }
                 }
-		if (watchdogIsActive==true){
+		if (watchdogIsActive){
 		led.unplot(2,3)
 		led.plot(2,4)
 		} else {
