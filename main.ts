@@ -31,8 +31,8 @@ namespace AQbit {
             SerialPin.P0,
             BaudRate.BaudRate9600
         )
-	led.unplot(2,3)
-	led.plot(2,4)
+	//led.unplot(2,3)
+	//led.plot(2,4)
     }
 
     function verifyBytes(response: Buffer): boolean {
@@ -291,8 +291,8 @@ namespace AQbit {
             SerialPin.P8,
             BaudRate.BaudRate115200
         )
-	led.unplot(2,4)
-	led.plot(2,3)
+	//led.unplot(2,4)
+	//led.plot(2,3)
         basic.pause(100)
     }
 
@@ -423,6 +423,13 @@ namespace AQbit {
                 if (watchdogIsActive && ((input.runningTime() - watchdogRunTime) > 20000)) {
                     control.reset()
                 }
+		if (watchdogIsActive==true){
+		led.unplot(2,3)
+		led.plot(2,4)
+		} else {
+		led.plot(2,3)
+		led.unplot(2,4)
+		}
                 basic.pause(100)
         }
     }
