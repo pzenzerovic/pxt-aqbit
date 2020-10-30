@@ -107,7 +107,7 @@ namespace AQbit {
         request.setNumber(NumberFormat.UInt8LE, 4, 0);
         request.setNumber(NumberFormat.UInt8LE, 5, 1);
         request.setNumber(NumberFormat.UInt8LE, 6, 113);
-        serial.writeBuffer(request)
+        //serial.writeBuffer(request)
         basic.pause(1000)
 	led.plot(1, 2)
         let response = serial.readBuffer(32)
@@ -127,7 +127,7 @@ namespace AQbit {
             request.setNumber(NumberFormat.UInt8LE, 4, 0);
             request.setNumber(NumberFormat.UInt8LE, 5, 1);
             request.setNumber(NumberFormat.UInt8LE, 6, 113);
-            serial.writeBuffer(request)
+            //serial.writeBuffer(request)
             basic.pause(1000)
             response = serial.readBuffer(32)
             //response = serial.readBuffer(0)
