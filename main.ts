@@ -51,38 +51,37 @@ namespace AQbit {
     //% weight=100
     //% blockId="aqb_pms_pasive" block="put PMS in passive mode"
     export function putPMSInPassiveMode(): void {
-        led.plot(0, 0)
+        ////led.plot(0, 0)
 	pins.digitalWritePin(DigitalPin.P13, 1)
-        watchdogRunTime = input.runningTime()
-        watchdogIsActive = true
-        //basic.clearScreen()
-        serialToPMS()
-	led.plot(0, 1)
+        //watchdogRunTime = input.runningTime()
+        //watchdogIsActive = true
+        //serialToPMS()
+	//led.plot(0, 1)
         serial.setRxBufferSize(32)
 	//serial.setRxBufferSize(0)
-        let request = pins.createBuffer(7);
-        request.setNumber(NumberFormat.UInt8LE, 0, 66);
-        request.setNumber(NumberFormat.UInt8LE, 1, 77);
-        request.setNumber(NumberFormat.UInt8LE, 2, 225);
-        request.setNumber(NumberFormat.UInt8LE, 3, 0);
-        request.setNumber(NumberFormat.UInt8LE, 4, 0);
-        request.setNumber(NumberFormat.UInt8LE, 5, 1);
-        request.setNumber(NumberFormat.UInt8LE, 6, 112);
-	led.plot(0, 2)
-        serial.writeBuffer(request)
-        basic.pause(500)
-	led.plot(0, 3)
-        let response = serial.readBuffer(32)
+        //let request = pins.createBuffer(7);
+        //request.setNumber(NumberFormat.UInt8LE, 0, 66);
+        //request.setNumber(NumberFormat.UInt8LE, 1, 77);
+        //request.setNumber(NumberFormat.UInt8LE, 2, 225);
+        //request.setNumber(NumberFormat.UInt8LE, 3, 0);
+        //request.setNumber(NumberFormat.UInt8LE, 4, 0);
+        //request.setNumber(NumberFormat.UInt8LE, 5, 1);
+        //request.setNumber(NumberFormat.UInt8LE, 6, 112);
+	//led.plot(0, 2)
+        //serial.writeBuffer(request)
+        //basic.pause(500)
+	//led.plot(0, 3)
+        //let response = serial.readBuffer(32)
         //let response = serial.readBuffer(0)
-	if (!verifyBytes(response)) {
-            serial.writeBuffer(request)
-            basic.pause(500)
-        }
-        watchdogIsActive = false
-	led.unplot(0, 0)
-	led.unplot(0, 1)
-	led.unplot(0, 2)
-	led.unplot(0, 3)
+	//if (!verifyBytes(response)) {
+        //    serial.writeBuffer(request)
+        //    basic.pause(500)
+        //}
+        //watchdogIsActive = false
+	//led.unplot(0, 0)
+	//led.unplot(0, 1)
+	//led.unplot(0, 2)
+	//led.unplot(0, 3)
     }
 
     /**
@@ -93,20 +92,19 @@ namespace AQbit {
     export function readPMS(): number {
         watchdogRunTime = input.runningTime()
         watchdogIsActive = true
-        //basic.clearScreen()
 	led.plot(1, 0)
         serialToPMS()
         serial.setRxBufferSize(32)
 	//serial.setRxBufferSize(0)
 	led.plot(1, 1)
-        let request = pins.createBuffer(7);
-        request.setNumber(NumberFormat.UInt8LE, 0, 66);
-        request.setNumber(NumberFormat.UInt8LE, 1, 77);
-        request.setNumber(NumberFormat.UInt8LE, 2, 226);
-        request.setNumber(NumberFormat.UInt8LE, 3, 0);
-        request.setNumber(NumberFormat.UInt8LE, 4, 0);
-        request.setNumber(NumberFormat.UInt8LE, 5, 1);
-        request.setNumber(NumberFormat.UInt8LE, 6, 113);
+        //let request = pins.createBuffer(7);
+        //request.setNumber(NumberFormat.UInt8LE, 0, 66);
+        //request.setNumber(NumberFormat.UInt8LE, 1, 77);
+        //request.setNumber(NumberFormat.UInt8LE, 2, 226);
+        //request.setNumber(NumberFormat.UInt8LE, 3, 0);
+        //request.setNumber(NumberFormat.UInt8LE, 4, 0);
+        //request.setNumber(NumberFormat.UInt8LE, 5, 1);
+        //request.setNumber(NumberFormat.UInt8LE, 6, 113);
         //serial.writeBuffer(request)
         basic.pause(1000)
 	led.plot(1, 2)
@@ -120,13 +118,13 @@ namespace AQbit {
 	    led.unplot(1, 3)
             return response[13]
         } else {
-            request.setNumber(NumberFormat.UInt8LE, 0, 66);
-            request.setNumber(NumberFormat.UInt8LE, 1, 77);
-            request.setNumber(NumberFormat.UInt8LE, 2, 226);
-            request.setNumber(NumberFormat.UInt8LE, 3, 0);
-            request.setNumber(NumberFormat.UInt8LE, 4, 0);
-            request.setNumber(NumberFormat.UInt8LE, 5, 1);
-            request.setNumber(NumberFormat.UInt8LE, 6, 113);
+            //request.setNumber(NumberFormat.UInt8LE, 0, 66);
+            //request.setNumber(NumberFormat.UInt8LE, 1, 77);
+            //request.setNumber(NumberFormat.UInt8LE, 2, 226);
+            //request.setNumber(NumberFormat.UInt8LE, 3, 0);
+            //request.setNumber(NumberFormat.UInt8LE, 4, 0);
+            //request.setNumber(NumberFormat.UInt8LE, 5, 1);
+            //request.setNumber(NumberFormat.UInt8LE, 6, 113);
             //serial.writeBuffer(request)
             basic.pause(1000)
             response = serial.readBuffer(32)
@@ -426,8 +424,8 @@ namespace AQbit {
     export function preventSensorBlocking(): void {
         while (true) {
                 if (watchdogIsActive){
-		    if (input.runningTime() - watchdogRunTime > 20000) {
-                    control.reset()
+		    if (input.runningTime() - watchdogRunTime > 10000) {
+			    control.reset()
 		    }
                 }
 		if (watchdogIsActive){
