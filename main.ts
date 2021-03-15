@@ -116,7 +116,7 @@ namespace AQbit {
 	    led.unplot(1, 1)
 	    led.unplot(1, 2)
 	    led.unplot(1, 3)
-            return response[13]
+            return 256 * response[12] + response[13]
         } else {
             //request.setNumber(NumberFormat.UInt8LE, 0, 66);
             //request.setNumber(NumberFormat.UInt8LE, 1, 77);
@@ -135,7 +135,7 @@ namespace AQbit {
 	        led.unplot(1, 1)
 	        led.unplot(1, 2)
 	        led.unplot(1, 3)
-                return response[13]
+                return 256 * response[12] + response[13]
             } else {
                 watchdogIsActive = false
                 return -1
