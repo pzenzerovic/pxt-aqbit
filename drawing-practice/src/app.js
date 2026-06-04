@@ -1,7 +1,8 @@
 // app.js — sastavljanje radne bilježnice: generiranje seta, prikaz i navigacija.
 
 import { generateSet } from "./generator.js";
-import { renderIso, renderView } from "./renderer.js";
+import { renderIso } from "./renderer3d.js";
+import { renderView } from "./renderer.js";
 
 const LEVEL_NAMES = { 1: "Lako", 2: "Srednje", 3: "Teško" };
 
