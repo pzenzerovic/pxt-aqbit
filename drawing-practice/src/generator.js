@@ -80,6 +80,18 @@ export function generateSolid(level, seed) {
     if (level > 1 && solid.size === fullCount) continue;
     // Izbjegni predegenerirane (premale) oblike.
     if (solid.size < 2) continue;
+    // Svaki voksel mora biti vidljiv iz izometrijskog kuta (+x/+y/+z smjer).
+    // Voksel bez ijedne slobodne plohe prema +x, +y ili +z nije vidljiv i
+    // bio bi zbunjujući (tamna "spilja" na dnu tijela).
+    let allVisible = true;
+    solid.forEach((x, y, z) => {
+      if (!allVisible) return;
+      if (!solid.has(x + 1, y, z)) return;
+      if (!solid.has(x, y + 1, z)) return;
+      if (!solid.has(x, y, z + 1)) return;
+      allVisible = false;
+    });
+    if (!allVisible) continue;
 
     return solid;
   }
