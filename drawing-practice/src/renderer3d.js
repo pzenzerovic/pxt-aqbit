@@ -126,15 +126,20 @@ function getRenderer() {
 
 export function renderIso(solid) {
   const W = solid.w, D = solid.d, H = solid.h;
-  const maxDim = Math.max(W, D, H);
-  const frustum = (maxDim + 2) * 0.9;
 
-  // Centar tijela u Three.js koordinatama.
+  // Analitički izračun frustuma: kamera gleda iz smjera (1,1,1).
+  // Horizontalna os kamere: (0.707, 0, -0.707) → raspon = 0.354*(W+D)
+  // Vertikalna os kamere: (-0.408, 0.816, -0.408) → raspon = 0.204*(W+D) + 0.408*H
+  const viewX = 0.354 * (W + D);
+  const viewY = 0.204 * (W + D) + 0.408 * H;
+  const frustum = Math.max(viewX, viewY) * 1.3;
+
+  // Centar tijela u Three.js koordinatama (naš x→x, y→z, z→y).
   const cx = W / 2, cy = H / 2, cz = D / 2;
-  const dist = frustum * 6;
+  const dist = 100;
 
   const camera = new THREE.OrthographicCamera(
-    -frustum, frustum, frustum, -frustum, 0.1, dist * 4
+    -frustum, frustum, frustum, -frustum, 0.01, 300
   );
   camera.position.set(cx + dist, cy + dist, cz + dist);
   camera.lookAt(cx, cy, cz);
@@ -147,9 +152,11 @@ export function renderIso(solid) {
   renderer.render(buildScene(solid), camera);
 
   // Kloniraj SVG i prilagodi atribute za inline ugradnju.
+  // Three.js SVGRenderer centrira putanje na (0,0) bez pomaka,
+  // pa viewBox mora pokrivati [-PX/2, PX/2] raspon.
   const clone = renderer.domElement.cloneNode(true);
   clone.setAttribute('class', 'iso');
-  clone.setAttribute('viewBox', `0 0 ${PX} ${PX}`);
+  clone.setAttribute('viewBox', `-${PX / 2} -${PX / 2} ${PX} ${PX}`);
   clone.removeAttribute('width');
   clone.removeAttribute('height');
   if (clone.style) clone.style.cssText = '';
