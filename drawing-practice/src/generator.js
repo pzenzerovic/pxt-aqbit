@@ -26,11 +26,18 @@ const LEVELS = {
   3: { dim: [3, 5], carves: [2, 3], maxCarve: 3 },
 };
 
-// Ureži kvadar iz jednog od 8 kutova zadanog tijela.
+// Ureži kvadar iz jednog od 7 vidljivih kutova tijela.
+// Kut (minX, minY, minZ) je uvijek skriven od izometrijskog gledišta (+X+Y+Z smjer)
+// pa ga nikad ne urežemo — korisnik bi vidio puni blok ali ne i urez.
 function carveCorner(solid, w, d, h, rng, maxExtent) {
-  const fromMaxX = rng() < 0.5;
-  const fromMaxY = rng() < 0.5;
-  const fromMaxZ = rng() < 0.5;
+  let fromMaxX, fromMaxY, fromMaxZ;
+  // Odbaci jedinu skrivenu kombinaciju (sve tri min) — pokušaj do 6 puta.
+  for (let t = 0; t < 6; t++) {
+    fromMaxX = rng() < 0.5;
+    fromMaxY = rng() < 0.5;
+    fromMaxZ = rng() < 0.5;
+    if (fromMaxX || fromMaxY || fromMaxZ) break;
+  }
 
   // Veličina ureza po svakoj osi: barem 1, najviše dim-1 (da ostane materijala).
   const rx = randInt(rng, 1, Math.min(maxExtent, w - 1));

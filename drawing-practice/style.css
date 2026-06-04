@@ -106,7 +106,9 @@ body {
   text-align: center;
 }
 
-/* NTB layout — Mongeova projekcija (Nacrt | Bokocrt / Tlocrt | -) */
+/* NTB layout — ISO 5456-2, prvo kutno projiciranje (1. kvadrant):
+   Nacrt | Bokocrt lijevi
+   Tlocrt | [simbol]                                                   */
 .ntb {
   display: grid;
   grid-template-columns: auto auto;
@@ -120,7 +122,7 @@ body {
 .cell.nacrt   { grid-area: nacrt; }
 .cell.bokocrt { grid-area: bokocrt; }
 .cell.tlocrt  { grid-area: tlocrt; }
-.cell.spacer  { grid-area: spacer; }
+.cell.spacer  { grid-area: spacer; display: flex; align-items: flex-end; padding: 4px; }
 .vlabel {
   display: block;
   font-size: 10px;
@@ -132,6 +134,12 @@ body {
   max-width: 160px;
   height: auto;
   background: #fff;
+}
+/* ISO simbol prvog kutnog projiciranja */
+.angle-symbol {
+  width: 44px;
+  height: auto;
+  opacity: 0.65;
 }
 
 .solution {
