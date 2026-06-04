@@ -82,20 +82,20 @@ export function renderIso(solid, opts = {}) {
   }
 
   // --- Prikupljanje ploha i bridova ---
-  const cells = [];
-  solid.forEach((x, y, z) => cells.push([x, y, z]));
-  // Slikarski algoritam: crtaj od dalekih prema bliskim (manji x+y+z = dalje).
-  cells.sort((a, b) => (a[0] + a[1] + a[2]) - (b[0] + b[1] + b[2]));
-
+  // Svaka ploha se prikuplja samostalno s dubinom svog centra (x+y+z tipa plohe)
+  // i tipom plohe (rx=0 < ly=1 < top=2). Sortiramo sve plohe po dubini, a kod
+  // jednakih dubina gornje plohe crtamo ZADNJE — tako uvijek pokrivaju bočne
+  // plohe susjednih voksela i eliminirano je "krvarenje" kod udubljenosti.
   const TOP_COLOR = "#dde6ef";
-  const RX_COLOR  = "#728199"; // desna ploha (+x)
-  const LY_COLOR  = "#9fb3c8"; // lijeva ploha (+y)
+  const RX_COLOR  = "#728199";
+  const LY_COLOR  = "#9fb3c8";
 
-  const faceParts = [];
-  const edgeMap   = new Map();
+  const allFaces = []; // { pts, fill, depth, typeOrder }
+  const edgeMap  = new Map();
 
-  for (const [x, y, z] of cells) {
-    // Gornja ploha (+z).
+  solid.forEach((x, y, z) => {
+    const base = x + y + z + 2; // centar svake plohe voksela ima istu ukupnu dubinu
+    // Gornja ploha (+z) — typeOrder 2 (crta se zadnja kod iste dubine).
     if (!solid.has(x, y, z + 1)) {
       const pts = [
         isoProject(x,   y,   z+1, s),
@@ -104,10 +104,10 @@ export function renderIso(solid, opts = {}) {
         isoProject(x,   y+1, z+1, s),
       ];
       pts.forEach(trackPt);
-      faceParts.push(svgPoly(pts, TOP_COLOR));
+      allFaces.push({ pts, fill: TOP_COLOR, depth: base, typeOrder: 2 });
       collectEdges(edgeMap, pts, "top");
     }
-    // Desna ploha (+x).
+    // Desna ploha (+x) — typeOrder 0.
     if (!solid.has(x + 1, y, z)) {
       const pts = [
         isoProject(x+1, y,   z,   s),
@@ -116,10 +116,10 @@ export function renderIso(solid, opts = {}) {
         isoProject(x+1, y,   z+1, s),
       ];
       pts.forEach(trackPt);
-      faceParts.push(svgPoly(pts, RX_COLOR));
+      allFaces.push({ pts, fill: RX_COLOR, depth: base, typeOrder: 0 });
       collectEdges(edgeMap, pts, "rx");
     }
-    // Lijeva ploha (+y).
+    // Lijeva ploha (+y) — typeOrder 1.
     if (!solid.has(x, y + 1, z)) {
       const pts = [
         isoProject(x,   y+1, z,   s),
@@ -128,10 +128,14 @@ export function renderIso(solid, opts = {}) {
         isoProject(x,   y+1, z+1, s),
       ];
       pts.forEach(trackPt);
-      faceParts.push(svgPoly(pts, LY_COLOR));
+      allFaces.push({ pts, fill: LY_COLOR, depth: base, typeOrder: 1 });
       collectEdges(edgeMap, pts, "ly");
     }
-  }
+  });
+
+  // Slikarski algoritam po plohi: dalje plohe prvo, kod iste dubine rx→ly→top.
+  allFaces.sort((a, b) => a.depth - b.depth || a.typeOrder - b.typeOrder);
+  const faceParts = allFaces.map(({ pts, fill }) => svgPoly(pts, fill));
 
   // --- Klasifikacija bridova (3 razine) ---
   // silhouettes: kinds==1, count==1  → pravi vanjski rub tijela (debelo)
@@ -161,7 +165,7 @@ export function renderIso(solid, opts = {}) {
       svgLine(p1, p2, "rgba(43,58,74,0.18)", 0.5)),
     // Prijelaz između vrsta ploha — kutovi i stepenice (srednje).
     ...foldLines.map(([p1, p2]) =>
-      svgLine(p1, p2, "rgba(43,58,74,0.65)", 1.0)),
+      svgLine(p1, p2, "rgba(43,58,74,0.35)", 0.8)),
     // Pravi vanjski rub tijela (najteže).
     ...silhouettes.map(([p1, p2]) =>
       svgLine(p1, p2, "#2b3a4a", 1.8)),
