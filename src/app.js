@@ -5,9 +5,10 @@ import { renderIso, renderView } from "./renderer.js";
 
 const LEVEL_NAMES = { 1: "Lako", 2: "Srednje", 3: "Teško" };
 
-// Klasični raspored Mongeove projekcije (1. kvadrant):
-//   Nacrt   | Bokocrt
+// ISO 5456-2, prvo kutno projiciranje (1. kvadrant / europska metoda):
+//   Nacrt   | Bokocrt (lijevi, desno od nacrta)
 //   Tlocrt  |
+// Symbol 1. kvadranta (krnji stožac, pogled s desna→lijevo) prikazan u footeru.
 function ntbBlock(solid, solution) {
   const opts = { solution };
   return `
@@ -24,8 +25,19 @@ function ntbBlock(solid, solution) {
         <span class="vlabel">Tlocrt</span>
         ${renderView(solid, "tlocrt", opts)}
       </div>
-      <div class="cell spacer"></div>
+      <div class="cell spacer">
+        ${solution ? firstAngleSymbol() : ""}
+      </div>
     </div>`;
+}
+
+// SVG simbol prvog kutnog projiciranja (ISO, krnji stožac).
+function firstAngleSymbol() {
+  return `<svg class="angle-symbol" viewBox="0 0 52 30" xmlns="http://www.w3.org/2000/svg" title="Prvo kutno projiciranje (ISO 5456-2)">
+    <ellipse cx="10" cy="15" rx="8" ry="12" fill="none" stroke="#6b7886" stroke-width="1.5"/>
+    <path d="M18 3 L42 3 L42 27 L18 27" fill="none" stroke="#6b7886" stroke-width="1.5"/>
+    <ellipse cx="42" cy="15" rx="3.5" ry="12" fill="none" stroke="#6b7886" stroke-width="1.5"/>
+  </svg>`;
 }
 
 function exerciseCard(ex) {
