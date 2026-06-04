@@ -133,33 +133,38 @@ export function renderIso(solid, opts = {}) {
     }
   }
 
-  // --- Klasifikacija bridova ---
-  // Brid je "unutarnji grid" ako se pojavljuje 2× unutar ISTE vrste plohe
-  // (ravna ploha se nastavlja — nema stepenice). Sve ostalo je vidljivi rub.
+  // --- Klasifikacija bridova (3 razine) ---
+  // silhouettes: kinds==1, count==1  → pravi vanjski rub tijela (debelo)
+  // foldLines:   kinds>1             → prijelaz između vrsta ploha — vanjski kutovi
+  //                                    i unutarnje stepenice na udubljenima (srednje)
+  // gridLines:   kinds==1, count>=2  → ravna ploha se nastavlja, samo mreža (tanko)
   const gridLines   = [];
+  const foldLines   = [];
   const silhouettes = [];
 
   for (const { p1, p2, top, rx, ly } of edgeMap.values()) {
     const kinds = (top > 0 ? 1 : 0) + (rx > 0 ? 1 : 0) + (ly > 0 ? 1 : 0);
     if (kinds > 1) {
-      // Brid na spoju dviju različitih vrsta plohe → uvijek vidljivi rub.
-      silhouettes.push([p1, p2]);
+      foldLines.push([p1, p2]);
     } else {
       const count = top + rx + ly;
-      if (count >= 2) gridLines.push([p1, p2]); // unutarnji grid iste plohe
-      else silhouettes.push([p1, p2]);           // vanjski rub
+      if (count >= 2) gridLines.push([p1, p2]);
+      else silhouettes.push([p1, p2]);
     }
   }
 
   const parts = [
     ...groundParts,
     ...faceParts,
-    // Lagana crtkana mreža za brojanje voksela.
+    // Mreža iste plohe (najlakše).
     ...gridLines.map(([p1, p2]) =>
-      svgLine(p1, p2, "rgba(43,58,74,0.20)", 0.6)),
-    // Jaka silhueta tijela.
+      svgLine(p1, p2, "rgba(43,58,74,0.18)", 0.5)),
+    // Prijelaz između vrsta ploha — kutovi i stepenice (srednje).
+    ...foldLines.map(([p1, p2]) =>
+      svgLine(p1, p2, "rgba(43,58,74,0.65)", 1.0)),
+    // Pravi vanjski rub tijela (najteže).
     ...silhouettes.map(([p1, p2]) =>
-      svgLine(p1, p2, "#2b3a4a", 1.7)),
+      svgLine(p1, p2, "#2b3a4a", 1.8)),
   ];
 
   const pad = 16;
