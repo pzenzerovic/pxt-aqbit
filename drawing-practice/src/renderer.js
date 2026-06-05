@@ -244,7 +244,7 @@ export function isoModel(solid, opts = {}) {
 function fullGridLines(solid, s) {
   const W = solid.w, D = solid.d, H = solid.h;
   const lines = [];
-  const col = "#4a7090", sw = 0.5, dash = "2,4";
+  const col = "#e00000", sw = 1.0, dash = "2,4";
   // Gornja ravnina (z=H)
   for (let x = 0; x <= W; x++) lines.push([isoProject(x,0,H,s), isoProject(x,D,H,s), col, sw, dash]);
   for (let y = 0; y <= D; y++) lines.push([isoProject(0,y,H,s), isoProject(W,y,H,s), col, sw, dash]);
