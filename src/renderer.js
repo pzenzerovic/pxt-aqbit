@@ -93,15 +93,44 @@ function svgLine(p1, p2, stroke, sw, dash) {
   return `<line x1="${p1[0].toFixed(2)}" y1="${p1[1].toFixed(2)}" x2="${p2[0].toFixed(2)}" y2="${p2[1].toFixed(2)}" stroke="${stroke}" stroke-width="${sw}"${d} stroke-linecap="round"/>`;
 }
 
+// Za brid s jednom pločom (count=1, kinds=1): provjeri je li pravi siluetni rub
+// ili unutarnji rub stepenice/utora. Svaki brid ima 4 susjedna voksela u ravnini
+// okomitoj na brid; 2 su "sa strane plohe", 2 su "s vanjske strane" (duž normale plohe).
+// Ako postoji voksel s vanjske strane → rub je prijelaz stepenice → tanka linija.
+// Koordinate x0/y0/z0 su min od oba vrha jer a/b mogu biti u bilo kom redoslijedu.
+function isInnerStepEdge(solid, e) {
+  const [ax, ay, az] = e.a;
+  const [bx, by, bz] = e.b;
+  const x0 = Math.min(ax, bx), y0 = Math.min(ay, by), z0 = Math.min(az, bz);
+  let outward;
+  if (az !== bz) {
+    // Vertikalni brid (z varira), x i y konstantni
+    if (e.ly === 1)     outward = [[x0-1, y0, z0], [x0, y0, z0]];   // LY: vanjska strana +y
+    else                outward = [[x0, y0-1, z0], [x0, y0, z0]];   // RX: vanjska strana +x
+  } else if (ax !== bx) {
+    // Horizontalni brid u x, y i z konstantni
+    if (e.ly === 1)     outward = [[x0, y0, z0-1], [x0, y0, z0]];   // LY: vanjska strana +y
+    else                return false;                                  // TOP: uvijek debelo
+  } else {
+    // Horizontalni brid u y, x i z konstantni
+    if (e.rx === 1)     outward = [[x0, y0, z0-1], [x0, y0, z0]];   // RX: vanjska strana +x
+    else                return false;                                  // TOP: uvijek debelo
+  }
+  return outward.some(([x, y, z]) => solid.has(x, y, z));
+}
+
 // Klasifikacija jednog brida na temelju ploha koje ga dijele:
-//   silhouette: kinds==1, count==1  → vanjski rub tijela
-//   foldLine:   kinds>1             → prijelaz između vrsta ploha (kut/stepenica)
-//   gridLine:   kinds==1, count>=2  → ravnina se nastavlja (mreža, crtkano)
-// Vraća "thick" (silhouette/fold) ili "thin" (grid).
-function classifyIsoEdge(e) {
+//   silhouette: kinds==1, count==1, nema voksela izvana → pravi vanjski rub
+//   foldLine:   kinds>1                                  → prijelaz između vrsta ploha
+//   stepEdge:   kinds==1, count==1, ali ima voksel izvana → unutarnji rub stepenice
+//   gridLine:   kinds==1, count>=2                       → ravnina se nastavlja (crtkano)
+// Vraća "thick" (silhouette/fold) ili "thin" (grid/step).
+function classifyIsoEdge(e, solid) {
   const kinds = (e.top > 0 ? 1 : 0) + (e.rx > 0 ? 1 : 0) + (e.ly > 0 ? 1 : 0);
   const count = e.top + e.rx + e.ly;
-  return (kinds > 1 || count === 1) ? "thick" : "thin";
+  if (kinds > 1) return "thick";
+  if (count === 1) return isInnerStepEdge(solid, e) ? "thin" : "thick";
+  return "thin";
 }
 
 // isoModel — gradi strukturirani model izometrije: plohe, bridovi (s 3D ključem
@@ -176,7 +205,7 @@ export function isoModel(solid, opts = {}) {
 
   const edges = [];
   for (const e of edgeMap.values()) {
-    edges.push({ key: e.key, a: e.a, b: e.b, p1: e.p1, p2: e.p2, cls: classifyIsoEdge(e),
+    edges.push({ key: e.key, a: e.a, b: e.b, p1: e.p1, p2: e.p2, cls: classifyIsoEdge(e, solid),
                  top: e.top, rx: e.rx, ly: e.ly,
                  segments: visibleSegments(solid, e.a, e.b, s) });
   }
