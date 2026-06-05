@@ -32,7 +32,7 @@ function collectEdges(map, pts3d, pts2d, type) {
     const p3d1 = pts3d[i], p3d2 = pts3d[(i + 1) % pts3d.length];
     const p2d1 = pts2d[i], p2d2 = pts2d[(i + 1) % pts2d.length];
     const key = edgeKey3d(p3d1, p3d2);
-    if (!map.has(key)) map.set(key, { p1: p2d1, p2: p2d2, top: 0, rx: 0, ly: 0 });
+    if (!map.has(key)) map.set(key, { key, a: p3d1, b: p3d2, p1: p2d1, p2: p2d2, top: 0, rx: 0, ly: 0 });
     const e = map.get(key);
     e[type]++;
   }
@@ -48,10 +48,23 @@ function svgLine(p1, p2, stroke, sw, dash) {
   return `<line x1="${p1[0].toFixed(2)}" y1="${p1[1].toFixed(2)}" x2="${p2[0].toFixed(2)}" y2="${p2[1].toFixed(2)}" stroke="${stroke}" stroke-width="${sw}"${d} stroke-linecap="round"/>`;
 }
 
-export function renderIso(solid, opts = {}) {
+// Klasifikacija jednog brida na temelju ploha koje ga dijele:
+//   silhouette: kinds==1, count==1  → vanjski rub tijela
+//   foldLine:   kinds>1             → prijelaz između vrsta ploha (kut/stepenica)
+//   gridLine:   kinds==1, count>=2  → ravnina se nastavlja (mreža, crtkano)
+// Vraća "thick" (silhouette/fold) ili "thin" (grid).
+function classifyIsoEdge(e) {
+  const kinds = (e.top > 0 ? 1 : 0) + (e.rx > 0 ? 1 : 0) + (e.ly > 0 ? 1 : 0);
+  const count = e.top + e.rx + e.ly;
+  return (kinds > 1 || count === 1) ? "thick" : "thin";
+}
+
+// isoModel — gradi strukturirani model izometrije: plohe, bridovi (s 3D ključem
+// i klasifikacijom) i granični okvir. Koristi ga i renderIso i alat za označavanje
+// bridova (edge-tool) — JEDAN izvor istine za klasifikaciju.
+export function isoModel(solid, opts = {}) {
   const s = opts.scale || 30;
 
-  // --- Bounding box koordinate za viewBox ---
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
   function trackPt(p) {
     if (p[0] < minX) minX = p[0];
@@ -63,36 +76,31 @@ export function renderIso(solid, opts = {}) {
   const W = solid.w, D = solid.d;
 
   // --- Pod (ground grid) ---
-  const groundParts = [];
+  const ground = { corners: [], lines: [] };
   const gcorners = [
     isoProject(0, 0, 0, s), isoProject(W, 0, 0, s),
     isoProject(W, D, 0, s), isoProject(0, D, 0, s),
   ];
   gcorners.forEach(trackPt);
-  const gpts = gcorners.map(p => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
-  groundParts.push(`<polygon points="${gpts}" fill="#eef2f6"/>`);
+  ground.corners = gcorners;
   for (let i = 0; i <= W; i++) {
     const p1 = isoProject(i, 0, 0, s), p2 = isoProject(i, D, 0, s);
     trackPt(p1); trackPt(p2);
-    groundParts.push(svgLine(p1, p2, "#a0b0be", 0.7, "4,4"));
+    ground.lines.push([p1, p2]);
   }
   for (let j = 0; j <= D; j++) {
     const p1 = isoProject(0, j, 0, s), p2 = isoProject(W, j, 0, s);
     trackPt(p1); trackPt(p2);
-    groundParts.push(svgLine(p1, p2, "#a0b0be", 0.7, "4,4"));
+    ground.lines.push([p1, p2]);
   }
 
   // --- Prikupljanje ploha i bridova ---
-  // Svaka ploha se prikuplja samostalno s dubinom svog centra (x+y+z tipa plohe)
-  // i tipom plohe (rx=0 < ly=1 < top=2). Sortiramo sve plohe po dubini, a kod
-  // jednakih dubina gornje plohe crtamo ZADNJE — tako uvijek pokrivaju bočne
-  // plohe susjednih voksela i eliminirano je "krvarenje" kod udubljenosti.
   const TOP_COLOR = "#dde6ef";
   const RX_COLOR  = "#728199";
   const LY_COLOR  = "#9fb3c8";
 
-  const allFaces = []; // { pts, fill, depth, typeOrder }
-  const edgeMap  = new Map();
+  const faces = []; // { pts, fill, depth, typeOrder }
+  const edgeMap = new Map();
 
   solid.forEach((x, y, z) => {
     const base = x + y + z + 2;
@@ -100,50 +108,62 @@ export function renderIso(solid, opts = {}) {
       const c3d = [[x,y,z+1],[x+1,y,z+1],[x+1,y+1,z+1],[x,y+1,z+1]];
       const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
-      allFaces.push({ pts, fill: TOP_COLOR, depth: base, typeOrder: 2 });
+      faces.push({ pts, fill: TOP_COLOR, depth: base, typeOrder: 2 });
       collectEdges(edgeMap, c3d, pts, "top");
     }
     if (!solid.has(x + 1, y, z)) {
       const c3d = [[x+1,y,z],[x+1,y+1,z],[x+1,y+1,z+1],[x+1,y,z+1]];
       const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
-      allFaces.push({ pts, fill: RX_COLOR, depth: base, typeOrder: 0 });
+      faces.push({ pts, fill: RX_COLOR, depth: base, typeOrder: 0 });
       collectEdges(edgeMap, c3d, pts, "rx");
     }
     if (!solid.has(x, y + 1, z)) {
       const c3d = [[x,y+1,z],[x+1,y+1,z],[x+1,y+1,z+1],[x,y+1,z+1]];
       const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
-      allFaces.push({ pts, fill: LY_COLOR, depth: base, typeOrder: 1 });
+      faces.push({ pts, fill: LY_COLOR, depth: base, typeOrder: 1 });
       collectEdges(edgeMap, c3d, pts, "ly");
     }
   });
 
-  // silhouettes: kinds==1, count==1  → vanjski rub
-  // foldLines:   kinds>1             → prijelaz između vrsta ploha
-  // gridLines:   kinds==1, count>=2  → ravnina se nastavlja (crtkano)
-  // Sve plohe se crtaju prve, zatim svi bridovi na vrhu — nijedna ploha ne može prekriti brid.
-  const thickEdges = [], thinEdges = [];
-  for (const { p1, p2, top, rx, ly } of edgeMap.values()) {
-    const kinds = (top > 0 ? 1 : 0) + (rx > 0 ? 1 : 0) + (ly > 0 ? 1 : 0);
-    const count = top + rx + ly;
-    if (kinds > 1 || count === 1) {
-      thickEdges.push(svgLine(p1, p2, "#1a2a38", 2.0, null));
-    } else {
-      thinEdges.push(svgLine(p1, p2, "#7e96a8", 0.7, "4,4"));
-    }
+  faces.sort((a, b) => a.depth - b.depth || a.typeOrder - b.typeOrder);
+
+  const edges = [];
+  for (const e of edgeMap.values()) {
+    edges.push({ key: e.key, a: e.a, b: e.b, p1: e.p1, p2: e.p2, cls: classifyIsoEdge(e),
+                 top: e.top, rx: e.rx, ly: e.ly });
   }
 
-  allFaces.sort((a, b) => a.depth - b.depth || a.typeOrder - b.typeOrder);
+  return { faces, edges, ground, bbox: { minX, minY, maxX, maxY }, scale: s };
+}
+
+export function renderIso(solid, opts = {}) {
+  const { faces, edges, ground, bbox } = isoModel(solid, opts);
+
+  const groundParts = [];
+  const gpts = ground.corners.map(p => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
+  groundParts.push(`<polygon points="${gpts}" fill="#eef2f6"/>`);
+  for (const [p1, p2] of ground.lines)
+    groundParts.push(svgLine(p1, p2, "#a0b0be", 0.7, "4,4"));
+
+  // Sve plohe se crtaju prve, zatim tanki (grid) pa debeli (silhouette/fold) bridovi —
+  // tako nijedna ploha ne može prekriti brid.
+  const thinEdges = [], thickEdges = [];
+  for (const e of edges) {
+    if (e.cls === "thick") thickEdges.push(svgLine(e.p1, e.p2, "#1a2a38", 2.0, null));
+    else thinEdges.push(svgLine(e.p1, e.p2, "#7e96a8", 0.7, "4,4"));
+  }
 
   const parts = [
     ...groundParts,
-    ...allFaces.map(f => svgPoly(f.pts, f.fill)),
+    ...faces.map(f => svgPoly(f.pts, f.fill)),
     ...thinEdges,
     ...thickEdges,
   ];
 
   const pad = 16;
+  const { minX, minY, maxX, maxY } = bbox;
   const vb = `${(minX-pad).toFixed(2)} ${(minY-pad).toFixed(2)} ${(maxX-minX+pad*2).toFixed(2)} ${(maxY-minY+pad*2).toFixed(2)}`;
   return `<svg class="iso" viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" role="img">${parts.join("")}</svg>`;
 }
