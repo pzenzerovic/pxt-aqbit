@@ -99,6 +99,8 @@ body {
   height: auto;
   max-height: 220px;
 }
+/* Debljina linija i duljina crtica u pikselima (neovisno o skaliranju SVG-a). */
+.iso path { vector-effect: non-scaling-stroke; }
 .scale-note {
   font-size: 10px;
   color: var(--muted);

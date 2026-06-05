@@ -71,7 +71,7 @@ function buildScene(solid) {
   const gGeo = new THREE.BufferGeometry();
   gGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(gPts), 3));
   scene.add(new THREE.LineSegments(gGeo, new THREE.LineDashedMaterial(
-    { color: 0xaab6c2, linewidth: 0.8, dashSize: 5, gapSize: 5 })));
+    { color: 0x8fa0b0, linewidth: 0.9, dashSize: 4, gapSize: 4 })));
 
   // --- Vidljive plohe voksela ---
   const matTop = new THREE.MeshBasicMaterial({ color: 0xdde6ef, side: THREE.DoubleSide });
@@ -113,10 +113,11 @@ function buildScene(solid) {
     scene.add(new THREE.LineSegments(geo, mat));
   }
   // Grid linije (podjele ploha) — crtkano, da se "očitavaju" veličine.
-  addLines(gridPts, 0x9aa7b4, 0.8, 5);
+  // Debljine i crtice su u pikselima (vector-effect: non-scaling-stroke u CSS-u).
+  addLines(gridPts, 0x8fa0b0, 0.9, 4);
   // Stvarni bridovi tijela — pune, deblje crte.
-  addLines(foldPts, 0x2a3a48, 1.6);
-  addLines(silPts,  0x14222e, 2.6);
+  addLines(foldPts, 0x2a3a48, 1.7);
+  addLines(silPts,  0x14222e, 2.9);
 
   return scene;
 }
