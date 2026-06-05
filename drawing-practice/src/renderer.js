@@ -152,11 +152,12 @@ function isInnerStepEdge(solid, e) {
 //   silhouette:   count==1 i NIJE unutarnji → pravi vanjski rub (debelo)
 //   foldLine:     kinds>1  i NIJE konkavni  → konveksni prijelaz (debelo)
 //   stepEdge/concaveFold: unutarnji rub stepenice ili konkavni kut → tanko
+// Klasifikacija: "gridcont" (nastavak ravnine), "step" (stepenica/konkavni), "thick" (silueta/konveksni)
 function classifyIsoEdge(e, solid) {
   const kinds = (e.top > 0 ? 1 : 0) + (e.rx > 0 ? 1 : 0) + (e.ly > 0 ? 1 : 0);
   const count = e.top + e.rx + e.ly;
-  if (kinds > 1 || count === 1) return isInnerStepEdge(solid, e) ? "thin" : "thick";
-  return "thin";
+  if (kinds > 1 || count === 1) return isInnerStepEdge(solid, e) ? "step" : "thick";
+  return "gridcont";
 }
 
 // isoModel — gradi strukturirani model izometrije: plohe, bridovi (s 3D ključem
@@ -240,55 +241,71 @@ export function isoModel(solid, opts = {}) {
 }
 
 // Crtkana mreža bounding-boxa na sve tri vidljive ravnine (vrh, desno, lijevo).
-// Crta se IZA ploha — vidi se samo tamo gdje nema voxela (u urezima/rupama).
 function fullGridLines(solid, s) {
   const W = solid.w, D = solid.d, H = solid.h;
   const lines = [];
-  const col = "#e00000", sw = 1.0, dash = "2,4";
   // Gornja ravnina (z=H)
-  for (let x = 0; x <= W; x++) lines.push([isoProject(x,0,H,s), isoProject(x,D,H,s), col, sw, dash]);
-  for (let y = 0; y <= D; y++) lines.push([isoProject(0,y,H,s), isoProject(W,y,H,s), col, sw, dash]);
+  for (let x = 0; x <= W; x++) lines.push([isoProject(x,0,H,s), isoProject(x,D,H,s)]);
+  for (let y = 0; y <= D; y++) lines.push([isoProject(0,y,H,s), isoProject(W,y,H,s)]);
   // Desna ravnina (x=W)
-  for (let y = 0; y <= D; y++) lines.push([isoProject(W,y,0,s), isoProject(W,y,H,s), col, sw, dash]);
-  for (let z = 0; z <= H; z++) lines.push([isoProject(W,0,z,s), isoProject(W,D,z,s), col, sw, dash]);
+  for (let y = 0; y <= D; y++) lines.push([isoProject(W,y,0,s), isoProject(W,y,H,s)]);
+  for (let z = 0; z <= H; z++) lines.push([isoProject(W,0,z,s), isoProject(W,D,z,s)]);
   // Lijeva ravnina (y=D)
-  for (let x = 0; x <= W; x++) lines.push([isoProject(x,D,0,s), isoProject(x,D,H,s), col, sw, dash]);
-  for (let z = 0; z <= H; z++) lines.push([isoProject(0,D,z,s), isoProject(W,D,z,s), col, sw, dash]);
+  for (let x = 0; x <= W; x++) lines.push([isoProject(x,D,0,s), isoProject(x,D,H,s)]);
+  for (let z = 0; z <= H; z++) lines.push([isoProject(0,D,z,s), isoProject(W,D,z,s)]);
   return lines;
 }
 
+// Debug boje po tipu brida (svaki u svojoj boji za analizu):
+//   Pod grid (z=0):       #ff9900 (narančasta)
+//   Grid nastavak:        #0066ff (plava)
+//   Step / konkavni:      #cc00ff (ljubičasta)
+//   Debeli (silueta):     #00cc00 (zelena)
+//   Bbox mreža:           #ff0000 (crvena)
 export function renderIso(solid, opts = {}) {
   const { faces, edges, ground, bbox, scale: s } = isoModel(solid, opts);
 
-  const groundParts = [];
+  const showGround   = opts.showGround   !== false;
+  const showGridCont = opts.showGridCont !== false;
+  const showStep     = opts.showStep     !== false;
+  const showThick    = opts.showThick    !== false;
+  const showBbox     = !!opts.showGrid;
+
+  const parts = [];
+
+  // Pod — pozadinska ploha uvijek prikazana za orijentaciju
   const gpts = ground.corners.map(p => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
-  groundParts.push(`<polygon points="${gpts}" fill="#eef2f6"/>`);
-  for (const [p1, p2] of ground.lines)
-    groundParts.push(svgLine(p1, p2, "#a0b0be", 0.7, "4,4"));
+  parts.push(`<polygon points="${gpts}" fill="#eef2f6"/>`);
+  if (showGround)
+    for (const [p1, p2] of ground.lines)
+      parts.push(svgLine(p1, p2, "#ff9900", 0.8, "4,4"));
 
-  const gridParts = [];
-  if (opts.showGrid) {
-    for (const [p1, p2, col, sw, dash] of fullGridLines(solid, s))
-      gridParts.push(svgLine(p1, p2, col, sw, dash));
-  }
+  // Plohe
+  for (const f of faces) parts.push(svgPoly(f.pts, f.fill));
 
-  // Plohe se crtaju prve, zatim VIDLJIVI dijelovi bridova (tanki pa debeli).
-  // Skriveni dijelovi bridova su uklonjeni (hidden-line removal) pa nema krvarenja.
-  const thinEdges = [], thickEdges = [];
-  for (const e of edges) {
-    for (const [q1, q2] of e.segments) {
-      if (e.cls === "thick") thickEdges.push(svgLine(q1, q2, "#1a2a38", 2.0, null));
-      else thinEdges.push(svgLine(q1, q2, "#7e96a8", 0.7, "4,4"));
-    }
-  }
+  // Bridovi — grupirani po tipu, svaki tip u svojoj boji
+  const byType = { gridcont: [], step: [], thick: [] };
+  for (const e of edges) byType[e.cls].push(e);
 
-  const parts = [
-    ...groundParts,
-    ...faces.map(f => svgPoly(f.pts, f.fill)),
-    ...thinEdges,
-    ...thickEdges,
-    ...gridParts,
-  ];
+  if (showGridCont)
+    for (const e of byType.gridcont)
+      for (const [q1, q2] of e.segments)
+        parts.push(svgLine(q1, q2, "#0066ff", 0.8, "4,4"));
+
+  if (showStep)
+    for (const e of byType.step)
+      for (const [q1, q2] of e.segments)
+        parts.push(svgLine(q1, q2, "#cc00ff", 1.0, "4,4"));
+
+  if (showThick)
+    for (const e of byType.thick)
+      for (const [q1, q2] of e.segments)
+        parts.push(svgLine(q1, q2, "#00cc00", 2.0, null));
+
+  // Bbox grid — na vrhu svega (vidi se i tamo gdje ima voksela)
+  if (showBbox)
+    for (const [p1, p2] of fullGridLines(solid, s))
+      parts.push(svgLine(p1, p2, "#ff0000", 1.0, "2,4"));
 
   const pad = 16;
   const { minX, minY, maxX, maxY } = bbox;
