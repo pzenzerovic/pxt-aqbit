@@ -239,14 +239,38 @@ export function isoModel(solid, opts = {}) {
   return { faces, edges, ground, bbox: { minX, minY, maxX, maxY }, scale: s };
 }
 
+// Crtkana mreža bounding-boxa na sve tri vidljive ravnine (vrh, desno, lijevo).
+// Crta se IZA ploha — vidi se samo tamo gdje nema voxela (u urezima/rupama).
+function fullGridLines(solid, s) {
+  const W = solid.w, D = solid.d, H = solid.h;
+  const lines = [];
+  const col = "#9ab8cc", sw = 0.4, dash = "2,4";
+  // Gornja ravnina (z=H)
+  for (let x = 0; x <= W; x++) lines.push([isoProject(x,0,H,s), isoProject(x,D,H,s), col, sw, dash]);
+  for (let y = 0; y <= D; y++) lines.push([isoProject(0,y,H,s), isoProject(W,y,H,s), col, sw, dash]);
+  // Desna ravnina (x=W)
+  for (let y = 0; y <= D; y++) lines.push([isoProject(W,y,0,s), isoProject(W,y,H,s), col, sw, dash]);
+  for (let z = 0; z <= H; z++) lines.push([isoProject(W,0,z,s), isoProject(W,D,z,s), col, sw, dash]);
+  // Lijeva ravnina (y=D)
+  for (let x = 0; x <= W; x++) lines.push([isoProject(x,D,0,s), isoProject(x,D,H,s), col, sw, dash]);
+  for (let z = 0; z <= H; z++) lines.push([isoProject(0,D,z,s), isoProject(W,D,z,s), col, sw, dash]);
+  return lines;
+}
+
 export function renderIso(solid, opts = {}) {
-  const { faces, edges, ground, bbox } = isoModel(solid, opts);
+  const { faces, edges, ground, bbox, scale: s } = isoModel(solid, opts);
 
   const groundParts = [];
   const gpts = ground.corners.map(p => p[0].toFixed(2) + "," + p[1].toFixed(2)).join(" ");
   groundParts.push(`<polygon points="${gpts}" fill="#eef2f6"/>`);
   for (const [p1, p2] of ground.lines)
     groundParts.push(svgLine(p1, p2, "#a0b0be", 0.7, "4,4"));
+
+  const gridParts = [];
+  if (opts.showGrid) {
+    for (const [p1, p2, col, sw, dash] of fullGridLines(solid, s))
+      gridParts.push(svgLine(p1, p2, col, sw, dash));
+  }
 
   // Plohe se crtaju prve, zatim VIDLJIVI dijelovi bridova (tanki pa debeli).
   // Skriveni dijelovi bridova su uklonjeni (hidden-line removal) pa nema krvarenja.
@@ -260,6 +284,7 @@ export function renderIso(solid, opts = {}) {
 
   const parts = [
     ...groundParts,
+    ...gridParts,
     ...faces.map(f => svgPoly(f.pts, f.fill)),
     ...thinEdges,
     ...thickEdges,

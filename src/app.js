@@ -40,7 +40,7 @@ function firstAngleSymbol() {
   </svg>`;
 }
 
-function exerciseCard(ex) {
+function exerciseCard(ex, showGrid) {
   const { index, level, solid } = ex;
   return `
     <article class="card" data-level="${level}">
@@ -51,7 +51,7 @@ function exerciseCard(ex) {
       <div class="card-body">
         <div class="iso-wrap">
           <div class="iso-title">Zadano tijelo (izometrija)</div>
-          ${renderIso(solid)}
+          ${renderIso(solid, { showGrid })}
           <div class="scale-note">1 kocka = 10 × 10 × 10 cm</div>
         </div>
         <div class="ntb-wrap">
@@ -71,7 +71,7 @@ function exerciseCard(ex) {
 
 function render(state) {
   const root = document.getElementById("exercises");
-  root.innerHTML = state.exercises.map(exerciseCard).join("");
+  root.innerHTML = state.exercises.map(ex => exerciseCard(ex, state.showGrid)).join("");
 
   root.querySelectorAll(".toggle-sol").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -89,8 +89,8 @@ function render(state) {
   });
 }
 
-function buildState(seed, perLevel) {
-  return { seed, perLevel, exercises: generateSet(seed, perLevel) };
+function buildState(seed, perLevel, showGrid = false) {
+  return { seed, perLevel, showGrid, exercises: generateSet(seed, perLevel) };
 }
 
 function init() {
@@ -104,8 +104,13 @@ function init() {
   render(state);
   syncSeedLabel(state.seed);
 
+  document.getElementById("show-grid").addEventListener("change", (e) => {
+    state = { ...state, showGrid: e.target.checked };
+    render(state);
+  });
+
   document.getElementById("new-set").addEventListener("click", () => {
-    state = buildState((Math.random() * 1e9) | 0, state.perLevel);
+    state = buildState((Math.random() * 1e9) | 0, state.perLevel, state.showGrid);
     render(state);
     syncSeedLabel(state.seed);
     updateUrl(state);
@@ -113,7 +118,7 @@ function init() {
 
   document.getElementById("per-level").addEventListener("change", (e) => {
     const v = parseInt(e.target.value, 10) || 3;
-    state = buildState(state.seed, v);
+    state = buildState(state.seed, v, state.showGrid);
     render(state);
     updateUrl(state);
   });
