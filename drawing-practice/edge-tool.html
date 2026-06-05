@@ -179,37 +179,41 @@ function renderIso() {
     p.setAttribute('fill', f.fill);
     svg.appendChild(p);
   }
-  // edges (visible styling)
+  // edges — crta se SAMO vidljivi dio (segmenti), isto kao na stranici
   for (const e of m.edges) {
-    const eff = overrides.get(e.key) || e.cls;
     const corrected = overrides.has(e.key) && overrides.get(e.key) !== e.cls;
-    const l = document.createElementNS(SVGNS, 'line');
-    l.setAttribute('x1', e.p1[0]); l.setAttribute('y1', e.p1[1]);
-    l.setAttribute('x2', e.p2[0]); l.setAttribute('y2', e.p2[1]);
-    l.setAttribute('vector-effect', 'non-scaling-stroke');
-    if (corrected && overrides.get(e.key) === 'thick') {
-      l.setAttribute('stroke', '#16a34a'); l.setAttribute('stroke-width', 3.5);
-    } else if (corrected && overrides.get(e.key) === 'thin') {
-      l.setAttribute('stroke', '#ea580c'); l.setAttribute('stroke-width', 3.5);
-    } else if (eff === 'thick') {
-      l.setAttribute('stroke', '#1a2a38'); l.setAttribute('stroke-width', 3);
-    } else {
-      l.setAttribute('stroke', '#7e96a8'); l.setAttribute('stroke-width', 2);
-      l.setAttribute('stroke-dasharray', '4,4');
+    const eff = overrides.get(e.key) || e.cls;
+    for (const [q1, q2] of e.segments) {
+      const l = document.createElementNS(SVGNS, 'line');
+      l.setAttribute('x1', q1[0]); l.setAttribute('y1', q1[1]);
+      l.setAttribute('x2', q2[0]); l.setAttribute('y2', q2[1]);
+      l.setAttribute('vector-effect', 'non-scaling-stroke');
+      if (corrected && overrides.get(e.key) === 'thick') {
+        l.setAttribute('stroke', '#16a34a'); l.setAttribute('stroke-width', 3.5);
+      } else if (corrected && overrides.get(e.key) === 'thin') {
+        l.setAttribute('stroke', '#ea580c'); l.setAttribute('stroke-width', 3.5);
+      } else if (eff === 'thick') {
+        l.setAttribute('stroke', '#1a2a38'); l.setAttribute('stroke-width', 3);
+      } else {
+        l.setAttribute('stroke', '#7e96a8'); l.setAttribute('stroke-width', 2);
+        l.setAttribute('stroke-dasharray', '4,4');
+      }
+      svg.appendChild(l);
     }
-    svg.appendChild(l);
   }
-  // clickable hit lines (wide, transparent) on top
+  // clickable hit lines (wide, transparent) on top of each visible segment
   for (const e of m.edges) {
-    const hit = document.createElementNS(SVGNS, 'line');
-    hit.setAttribute('x1', e.p1[0]); hit.setAttribute('y1', e.p1[1]);
-    hit.setAttribute('x2', e.p2[0]); hit.setAttribute('y2', e.p2[1]);
-    hit.setAttribute('stroke', 'transparent');
-    hit.setAttribute('stroke-width', 14);
-    hit.setAttribute('vector-effect', 'non-scaling-stroke');
-    hit.setAttribute('class', 'hit');
-    hit.onclick = () => cycleEdge(e);
-    svg.appendChild(hit);
+    for (const [q1, q2] of e.segments) {
+      const hit = document.createElementNS(SVGNS, 'line');
+      hit.setAttribute('x1', q1[0]); hit.setAttribute('y1', q1[1]);
+      hit.setAttribute('x2', q2[0]); hit.setAttribute('y2', q2[1]);
+      hit.setAttribute('stroke', 'transparent');
+      hit.setAttribute('stroke-width', 14);
+      hit.setAttribute('vector-effect', 'non-scaling-stroke');
+      hit.setAttribute('class', 'hit');
+      hit.onclick = () => cycleEdge(e);
+      svg.appendChild(hit);
+    }
   }
   host.appendChild(svg);
   updateCount();

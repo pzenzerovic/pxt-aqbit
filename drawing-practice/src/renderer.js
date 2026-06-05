@@ -19,6 +19,51 @@ function isoProject(x, y, z, s) {
   ];
 }
 
+// --- Uklanjanje skrivenih linija (hidden-line removal) ---
+// Kamera je u (+∞,+∞,+∞); točka je vidljiva ako između nje i kamere (smjer +1,+1,+1)
+// nema pune kocke. Inače je zaklonjena (npr. brid na dnu udubljenja iza višeg zida).
+// Koristi se točan obilazak voksela (3D DDA) — provjerava SVAKU kocku kroz koju
+// zraka prolazi, pa ne preskače tanke zaklone (fiksni korak bi ih mogao preskočiti).
+function occluded(solid, P) {
+  const { w, d, h } = solid;
+  let x = Math.floor(P[0] + 1e-9), y = Math.floor(P[1] + 1e-9), z = Math.floor(P[2] + 1e-9);
+  // Smjer zrake = (+1,+1,+1). tMax = udaljenost do sljedeće cjelobrojne ravnine po osi.
+  let tMaxX = 1 - (P[0] - Math.floor(P[0])); if (tMaxX <= 1e-9) tMaxX = 1;
+  let tMaxY = 1 - (P[1] - Math.floor(P[1])); if (tMaxY <= 1e-9) tMaxY = 1;
+  let tMaxZ = 1 - (P[2] - Math.floor(P[2])); if (tMaxZ <= 1e-9) tMaxZ = 1;
+  const maxIter = 3 * (w + d + h) + 6;
+  for (let i = 0; i < maxIter; i++) {
+    if (tMaxX <= tMaxY && tMaxX <= tMaxZ) { x++; tMaxX += 1; }
+    else if (tMaxY <= tMaxZ) { y++; tMaxY += 1; }
+    else { z++; tMaxZ += 1; }
+    if (x >= w || y >= d || z >= h || x < 0 || y < 0 || z < 0) return false; // izašli prema kameri
+    if (solid.has(x, y, z)) return true;
+  }
+  return false;
+}
+
+// Vrati vidljive dijelove brida A→B kao niz 2D segmenata [p1,p2].
+// Brid se uzorkuje po dužini; nevidljivi dijelovi (zaklonjeni tijelom) se izostave.
+// Time se rješava "krvarenje" — bridovi sa stražnje/skrivene strane konkavnih tijela
+// više se ne crtaju preko prednjih ploha.
+function visibleSegments(solid, A, B, s, N = 24) {
+  const runs = [];
+  let runStart = null;
+  for (let i = 0; i < N; i++) {
+    const um = (i + 0.5) / N;
+    const P = [A[0] + (B[0]-A[0])*um, A[1] + (B[1]-A[1])*um, A[2] + (B[2]-A[2])*um];
+    const vis = !occluded(solid, P);
+    if (vis) { if (runStart === null) runStart = i / N; }
+    else if (runStart !== null) { runs.push([runStart, i / N]); runStart = null; }
+  }
+  if (runStart !== null) runs.push([runStart, 1]);
+  return runs.map(([u0, u1]) => {
+    const P0 = [A[0]+(B[0]-A[0])*u0, A[1]+(B[1]-A[1])*u0, A[2]+(B[2]-A[2])*u0];
+    const P1 = [A[0]+(B[0]-A[0])*u1, A[1]+(B[1]-A[1])*u1, A[2]+(B[2]-A[2])*u1];
+    return [isoProject(P0[0],P0[1],P0[2],s), isoProject(P1[0],P1[1],P1[2],s)];
+  });
+}
+
 // Ključ za brid: 3D koordinate (integer) — izbjegava lažna podudaranja zbog izometričke projekcije
 // gdje različite 3D točke mogu dati isti 2D piksel (npr. iso(2,0,0) == iso(3,1,1)).
 function edgeKey3d(a, b) {
@@ -132,7 +177,8 @@ export function isoModel(solid, opts = {}) {
   const edges = [];
   for (const e of edgeMap.values()) {
     edges.push({ key: e.key, a: e.a, b: e.b, p1: e.p1, p2: e.p2, cls: classifyIsoEdge(e),
-                 top: e.top, rx: e.rx, ly: e.ly });
+                 top: e.top, rx: e.rx, ly: e.ly,
+                 segments: visibleSegments(solid, e.a, e.b, s) });
   }
 
   return { faces, edges, ground, bbox: { minX, minY, maxX, maxY }, scale: s };
@@ -147,12 +193,14 @@ export function renderIso(solid, opts = {}) {
   for (const [p1, p2] of ground.lines)
     groundParts.push(svgLine(p1, p2, "#a0b0be", 0.7, "4,4"));
 
-  // Sve plohe se crtaju prve, zatim tanki (grid) pa debeli (silhouette/fold) bridovi —
-  // tako nijedna ploha ne može prekriti brid.
+  // Plohe se crtaju prve, zatim VIDLJIVI dijelovi bridova (tanki pa debeli).
+  // Skriveni dijelovi bridova su uklonjeni (hidden-line removal) pa nema krvarenja.
   const thinEdges = [], thickEdges = [];
   for (const e of edges) {
-    if (e.cls === "thick") thickEdges.push(svgLine(e.p1, e.p2, "#1a2a38", 2.0, null));
-    else thinEdges.push(svgLine(e.p1, e.p2, "#7e96a8", 0.7, "4,4"));
+    for (const [q1, q2] of e.segments) {
+      if (e.cls === "thick") thickEdges.push(svgLine(q1, q2, "#1a2a38", 2.0, null));
+      else thinEdges.push(svgLine(q1, q2, "#7e96a8", 0.7, "4,4"));
+    }
   }
 
   const parts = [
