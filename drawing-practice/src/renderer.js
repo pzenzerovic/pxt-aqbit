@@ -284,8 +284,8 @@ export function renderIso(solid, opts = {}) {
 
   const parts = [
     ...groundParts,
-    ...gridParts,
     ...faces.map(f => svgPoly(f.pts, f.fill)),
+    ...gridParts,
     ...thinEdges,
     ...thickEdges,
   ];
