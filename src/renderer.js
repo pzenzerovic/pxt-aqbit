@@ -19,21 +19,22 @@ function isoProject(x, y, z, s) {
   ];
 }
 
-// Ključ za brid: zaokruži koordinate i sortiraj krajnje točke abecedno.
-function edgeKey(p1, p2) {
-  const s1 = p1[0].toFixed(2) + "," + p1[1].toFixed(2);
-  const s2 = p2[0].toFixed(2) + "," + p2[1].toFixed(2);
+// Ključ za brid: 3D koordinate (integer) — izbjegava lažna podudaranja zbog izometričke projekcije
+// gdje različite 3D točke mogu dati isti 2D piksel (npr. iso(2,0,0) == iso(3,1,1)).
+function edgeKey3d(a, b) {
+  const s1 = a.join(","), s2 = b.join(",");
   return s1 <= s2 ? s1 + "|" + s2 : s2 + "|" + s1;
 }
 
-// Dodaj sve bridove poligona u mapu, grupirano po tipu plohe.
-function collectEdges(map, points, type) {
-  for (let i = 0; i < points.length; i++) {
-    const p1 = points[i];
-    const p2 = points[(i + 1) % points.length];
-    const key = edgeKey(p1, p2);
-    if (!map.has(key)) map.set(key, { p1, p2, top: 0, rx: 0, ly: 0 });
-    map.get(key)[type]++;
+// Dodaj sve bridove poligona u mapu. pts3d su 3D vrhovi, pts2d su projecirane 2D točke.
+function collectEdges(map, pts3d, pts2d, type) {
+  for (let i = 0; i < pts3d.length; i++) {
+    const p3d1 = pts3d[i], p3d2 = pts3d[(i + 1) % pts3d.length];
+    const p2d1 = pts2d[i], p2d2 = pts2d[(i + 1) % pts2d.length];
+    const key = edgeKey3d(p3d1, p3d2);
+    if (!map.has(key)) map.set(key, { p1: p2d1, p2: p2d2, top: 0, rx: 0, ly: 0 });
+    const e = map.get(key);
+    e[type]++;
   }
 }
 
@@ -94,81 +95,52 @@ export function renderIso(solid, opts = {}) {
   const edgeMap  = new Map();
 
   solid.forEach((x, y, z) => {
-    const base = x + y + z + 2; // centar svake plohe voksela ima istu ukupnu dubinu
-    // Gornja ploha (+z) — typeOrder 2 (crta se zadnja kod iste dubine).
+    const base = x + y + z + 2;
     if (!solid.has(x, y, z + 1)) {
-      const pts = [
-        isoProject(x,   y,   z+1, s),
-        isoProject(x+1, y,   z+1, s),
-        isoProject(x+1, y+1, z+1, s),
-        isoProject(x,   y+1, z+1, s),
-      ];
+      const c3d = [[x,y,z+1],[x+1,y,z+1],[x+1,y+1,z+1],[x,y+1,z+1]];
+      const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
       allFaces.push({ pts, fill: TOP_COLOR, depth: base, typeOrder: 2 });
-      collectEdges(edgeMap, pts, "top");
+      collectEdges(edgeMap, c3d, pts, "top");
     }
-    // Desna ploha (+x) — typeOrder 0.
     if (!solid.has(x + 1, y, z)) {
-      const pts = [
-        isoProject(x+1, y,   z,   s),
-        isoProject(x+1, y+1, z,   s),
-        isoProject(x+1, y+1, z+1, s),
-        isoProject(x+1, y,   z+1, s),
-      ];
+      const c3d = [[x+1,y,z],[x+1,y+1,z],[x+1,y+1,z+1],[x+1,y,z+1]];
+      const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
       allFaces.push({ pts, fill: RX_COLOR, depth: base, typeOrder: 0 });
-      collectEdges(edgeMap, pts, "rx");
+      collectEdges(edgeMap, c3d, pts, "rx");
     }
-    // Lijeva ploha (+y) — typeOrder 1.
     if (!solid.has(x, y + 1, z)) {
-      const pts = [
-        isoProject(x,   y+1, z,   s),
-        isoProject(x+1, y+1, z,   s),
-        isoProject(x+1, y+1, z+1, s),
-        isoProject(x,   y+1, z+1, s),
-      ];
+      const c3d = [[x,y+1,z],[x+1,y+1,z],[x+1,y+1,z+1],[x,y+1,z+1]];
+      const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
       allFaces.push({ pts, fill: LY_COLOR, depth: base, typeOrder: 1 });
-      collectEdges(edgeMap, pts, "ly");
+      collectEdges(edgeMap, c3d, pts, "ly");
     }
   });
 
-  // Slikarski algoritam po plohi: dalje plohe prvo, kod iste dubine rx→ly→top.
-  allFaces.sort((a, b) => a.depth - b.depth || a.typeOrder - b.typeOrder);
-  const faceParts = allFaces.map(({ pts, fill }) => svgPoly(pts, fill));
-
-  // --- Klasifikacija bridova (3 razine) ---
-  // silhouettes: kinds==1, count==1  → pravi vanjski rub tijela (debelo)
-  // foldLines:   kinds>1             → prijelaz između vrsta ploha — vanjski kutovi
-  //                                    i unutarnje stepenice na udubljenima (srednje)
-  // gridLines:   kinds==1, count>=2  → ravna ploha se nastavlja, samo mreža (tanko)
-  const gridLines   = [];
-  const foldLines   = [];
-  const silhouettes = [];
-
+  // silhouettes: kinds==1, count==1  → vanjski rub
+  // foldLines:   kinds>1             → prijelaz između vrsta ploha
+  // gridLines:   kinds==1, count>=2  → ravnina se nastavlja (crtkano)
+  // Sve plohe se crtaju prve, zatim svi bridovi na vrhu — nijedna ploha ne može prekriti brid.
+  const thickEdges = [], thinEdges = [];
   for (const { p1, p2, top, rx, ly } of edgeMap.values()) {
     const kinds = (top > 0 ? 1 : 0) + (rx > 0 ? 1 : 0) + (ly > 0 ? 1 : 0);
-    if (kinds > 1) {
-      foldLines.push([p1, p2]);
+    const count = top + rx + ly;
+    if (kinds > 1 || count === 1) {
+      thickEdges.push(svgLine(p1, p2, "#1a2a38", 2.0, null));
     } else {
-      const count = top + rx + ly;
-      if (count >= 2) gridLines.push([p1, p2]);
-      else silhouettes.push([p1, p2]);
+      thinEdges.push(svgLine(p1, p2, "#7e96a8", 0.7, "4,4"));
     }
   }
 
+  allFaces.sort((a, b) => a.depth - b.depth || a.typeOrder - b.typeOrder);
+
   const parts = [
     ...groundParts,
-    ...faceParts,
-    // Mreža iste plohe — crtkano da se "očitavaju" veličine.
-    ...gridLines.map(([p1, p2]) =>
-      svgLine(p1, p2, "#7e96a8", 0.7, "4,4")),
-    // Prijelaz između vrsta ploha — kutovi i stepenice.
-    ...foldLines.map(([p1, p2]) =>
-      svgLine(p1, p2, "#1a2a38", 1.5)),
-    // Pravi vanjski rub tijela — najdeblje.
-    ...silhouettes.map(([p1, p2]) =>
-      svgLine(p1, p2, "#1a2a38", 2.4)),
+    ...allFaces.map(f => svgPoly(f.pts, f.fill)),
+    ...thinEdges,
+    ...thickEdges,
   ];
 
   const pad = 16;
@@ -200,11 +172,10 @@ function buildView(solid, kind) {
       return arr;
     };
   } else if (kind === "tlocrt") {
-    // Tlocrt: promatrač na max-z, gleda prema -z. Prikaz: x→, y↓ (vrh=max-y, dno=0).
-    // Gornji rub tlocrta (r=0) susjedi dnu nacrta — y=D-1 (bliža strana promatraču nacrta).
+    // Tlocrt: promatrač na max-z, gleda prema -z. Prikaz: x→, y↓ (vrh=y=0, dno=y=D-1).
     cols = W; rows = D; frontIsMin = false;
     profileAt = (c, r) => {
-      const x = c, y = D - 1 - r;
+      const x = c, y = r;
       const arr = [];
       for (let z = 0; z < H; z++) if (solid.has(x, y, z)) arr.push(z);
       return arr;
