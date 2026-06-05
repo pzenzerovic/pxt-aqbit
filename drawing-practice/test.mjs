@@ -57,13 +57,14 @@ const nacrt = renderView(L, "nacrt", { solution: true });
 const solidEdges = (nacrt.match(/stroke-width="2"/g) || []).length;
 assert(solidEdges > 0, "L nacrt ima bridove tijela");
 
-// 5) Skriveni brid: kvadar 2x2x2 s urezom straga (na y=1) koji je nevidljiv sprijeda.
+// 5) Skriveni brid: kvadar 2x2x2 s urezom straga (y=0 = stražnja strana u novoj
+//    konvenciji gdje nacrt gleda od max-y). Urez mora biti isprekidan u nacrtu.
 const H = Solid.box(2, 2, 2);
-H.remove(0, 1, 1); // ukloni jednu stražnju gornju kocku
+H.remove(0, 0, 1); // ukloni jednu stražnju (y=0) gornju kocku
 H.normalize();
 const nacrtH = renderView(H, "nacrt", { solution: true });
 const hasDash = nacrtH.includes('stroke-dasharray');
-assert(hasDash, "urez straga daje isprekidani (skriveni) brid u nacrtu");
+assert(hasDash, "urez straga (y=0) daje isprekidani (skriveni) brid u nacrtu");
 
 console.log(fail === 0 ? "\nSVE PROŠLO ✅" : `\n${fail} GREŠAKA ❌`);
 process.exit(fail === 0 ? 0 : 1);

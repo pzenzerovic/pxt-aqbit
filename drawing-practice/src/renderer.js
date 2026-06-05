@@ -73,12 +73,12 @@ export function renderIso(solid, opts = {}) {
   for (let i = 0; i <= W; i++) {
     const p1 = isoProject(i, 0, 0, s), p2 = isoProject(i, D, 0, s);
     trackPt(p1); trackPt(p2);
-    groundParts.push(svgLine(p1, p2, "#c4ccd6", 0.7));
+    groundParts.push(svgLine(p1, p2, "#a0b0be", 0.7, "4,4"));
   }
   for (let j = 0; j <= D; j++) {
     const p1 = isoProject(0, j, 0, s), p2 = isoProject(W, j, 0, s);
     trackPt(p1); trackPt(p2);
-    groundParts.push(svgLine(p1, p2, "#c4ccd6", 0.7));
+    groundParts.push(svgLine(p1, p2, "#a0b0be", 0.7, "4,4"));
   }
 
   // --- Prikupljanje ploha i bridova ---
@@ -160,15 +160,15 @@ export function renderIso(solid, opts = {}) {
   const parts = [
     ...groundParts,
     ...faceParts,
-    // Mreža iste plohe (najlakše).
+    // Mreža iste plohe — crtkano da se "očitavaju" veličine.
     ...gridLines.map(([p1, p2]) =>
-      svgLine(p1, p2, "rgba(43,58,74,0.18)", 0.5)),
-    // Prijelaz između vrsta ploha — kutovi i stepenice (srednje).
+      svgLine(p1, p2, "#7e96a8", 0.7, "4,4")),
+    // Prijelaz između vrsta ploha — kutovi i stepenice.
     ...foldLines.map(([p1, p2]) =>
-      svgLine(p1, p2, "rgba(43,58,74,0.35)", 0.8)),
-    // Pravi vanjski rub tijela (najteže).
+      svgLine(p1, p2, "#1a2a38", 1.5)),
+    // Pravi vanjski rub tijela — najdeblje.
     ...silhouettes.map(([p1, p2]) =>
-      svgLine(p1, p2, "#2b3a4a", 1.8)),
+      svgLine(p1, p2, "#1a2a38", 2.4)),
   ];
 
   const pad = 16;
@@ -190,8 +190,9 @@ function buildView(solid, kind) {
   let cols, rows, profileAt, frontIsMin;
 
   if (kind === "nacrt") {
-    // Pogled sprijeda: promatrač na min-y, gleda prema +y. Prikaz: x→, z↑.
-    cols = W; rows = H; frontIsMin = true;
+    // Nacrt: promatrač na max-y (ploha vidljiva u izometriji), gleda prema -y.
+    // Prikaz: x→ (lijevo=0, desno=W), z↑ (dno=0, vrh=H).
+    cols = W; rows = H; frontIsMin = false;
     profileAt = (c, r) => {
       const x = c, z = H - 1 - r;
       const arr = [];
@@ -199,20 +200,21 @@ function buildView(solid, kind) {
       return arr;
     };
   } else if (kind === "tlocrt") {
-    // Pogled odozgo: promatrač na max-z, gleda prema -z. Prikaz: x→, y↓.
+    // Tlocrt: promatrač na max-z, gleda prema -z. Prikaz: x→, y↓ (vrh=max-y, dno=0).
+    // Gornji rub tlocrta (r=0) susjedi dnu nacrta — y=D-1 (bliža strana promatraču nacrta).
     cols = W; rows = D; frontIsMin = false;
     profileAt = (c, r) => {
-      const x = c, y = r;
+      const x = c, y = D - 1 - r;
       const arr = [];
       for (let z = 0; z < H; z++) if (solid.has(x, y, z)) arr.push(z);
       return arr;
     };
   } else {
-    // Bokocrt lijevi: promatrač na min-x, gleda prema +x. Prikaz: y→, z↑.
-    // U 1. kvadrantu: smješta se DESNO od nacrta.
-    cols = D; rows = H; frontIsMin = true;
+    // Bokocrt: promatrač na max-x (ploha vidljiva u izometriji), gleda prema -x.
+    // Prikaz: y→ obrnut (lijevo=D-1 susjedi nacrtu, desno=0), z↑.
+    cols = D; rows = H; frontIsMin = false;
     profileAt = (c, r) => {
-      const y = c, z = H - 1 - r;
+      const y = D - 1 - c, z = H - 1 - r;
       const arr = [];
       for (let x = 0; x < W; x++) if (solid.has(x, y, z)) arr.push(x);
       return arr;
