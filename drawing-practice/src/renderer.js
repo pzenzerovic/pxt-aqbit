@@ -19,20 +19,20 @@ function isoProject(x, y, z, s) {
   ];
 }
 
-// Ključ za brid: zaokruži koordinate i sortiraj krajnje točke abecedno.
-function edgeKey(p1, p2) {
-  const s1 = p1[0].toFixed(2) + "," + p1[1].toFixed(2);
-  const s2 = p2[0].toFixed(2) + "," + p2[1].toFixed(2);
+// Ključ za brid: 3D koordinate (integer) — izbjegava lažna podudaranja zbog izometričke projekcije
+// gdje različite 3D točke mogu dati isti 2D piksel (npr. iso(2,0,0) == iso(3,1,1)).
+function edgeKey3d(a, b) {
+  const s1 = a.join(","), s2 = b.join(",");
   return s1 <= s2 ? s1 + "|" + s2 : s2 + "|" + s1;
 }
 
-// Dodaj sve bridove poligona u mapu, grupirano po tipu plohe.
-function collectEdges(map, points, type, faceIdx) {
-  for (let i = 0; i < points.length; i++) {
-    const p1 = points[i];
-    const p2 = points[(i + 1) % points.length];
-    const key = edgeKey(p1, p2);
-    if (!map.has(key)) map.set(key, { p1, p2, top: 0, rx: 0, ly: 0, faceIdxs: [] });
+// Dodaj sve bridove poligona u mapu. pts3d su 3D vrhovi, pts2d su projecirane 2D točke.
+function collectEdges(map, pts3d, pts2d, type, faceIdx) {
+  for (let i = 0; i < pts3d.length; i++) {
+    const p3d1 = pts3d[i], p3d2 = pts3d[(i + 1) % pts3d.length];
+    const p2d1 = pts2d[i], p2d2 = pts2d[(i + 1) % pts2d.length];
+    const key = edgeKey3d(p3d1, p3d2);
+    if (!map.has(key)) map.set(key, { p1: p2d1, p2: p2d2, top: 0, rx: 0, ly: 0, faceIdxs: [] });
     const e = map.get(key);
     e[type]++;
     e.faceIdxs.push(faceIdx);
@@ -99,42 +99,30 @@ export function renderIso(solid, opts = {}) {
     const base = x + y + z + 2; // centar svake plohe voksela ima istu ukupnu dubinu
     // Gornja ploha (+z) — typeOrder 2 (crta se zadnja kod iste dubine).
     if (!solid.has(x, y, z + 1)) {
-      const pts = [
-        isoProject(x,   y,   z+1, s),
-        isoProject(x+1, y,   z+1, s),
-        isoProject(x+1, y+1, z+1, s),
-        isoProject(x,   y+1, z+1, s),
-      ];
+      const c3d = [[x,y,z+1],[x+1,y,z+1],[x+1,y+1,z+1],[x,y+1,z+1]];
+      const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
       const fi = allFaces.length;
       allFaces.push({ pts, fill: TOP_COLOR, depth: base, typeOrder: 2, edgeParts: [] });
-      collectEdges(edgeMap, pts, "top", fi);
+      collectEdges(edgeMap, c3d, pts, "top", fi);
     }
     // Desna ploha (+x) — typeOrder 0.
     if (!solid.has(x + 1, y, z)) {
-      const pts = [
-        isoProject(x+1, y,   z,   s),
-        isoProject(x+1, y+1, z,   s),
-        isoProject(x+1, y+1, z+1, s),
-        isoProject(x+1, y,   z+1, s),
-      ];
+      const c3d = [[x+1,y,z],[x+1,y+1,z],[x+1,y+1,z+1],[x+1,y,z+1]];
+      const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
       const fi = allFaces.length;
       allFaces.push({ pts, fill: RX_COLOR, depth: base, typeOrder: 0, edgeParts: [] });
-      collectEdges(edgeMap, pts, "rx", fi);
+      collectEdges(edgeMap, c3d, pts, "rx", fi);
     }
     // Lijeva ploha (+y) — typeOrder 1.
     if (!solid.has(x, y + 1, z)) {
-      const pts = [
-        isoProject(x,   y+1, z,   s),
-        isoProject(x+1, y+1, z,   s),
-        isoProject(x+1, y+1, z+1, s),
-        isoProject(x,   y+1, z+1, s),
-      ];
+      const c3d = [[x,y+1,z],[x+1,y+1,z],[x+1,y+1,z+1],[x,y+1,z+1]];
+      const pts = c3d.map(([px,py,pz]) => isoProject(px,py,pz,s));
       pts.forEach(trackPt);
       const fi = allFaces.length;
       allFaces.push({ pts, fill: LY_COLOR, depth: base, typeOrder: 1, edgeParts: [] });
-      collectEdges(edgeMap, pts, "ly", fi);
+      collectEdges(edgeMap, c3d, pts, "ly", fi);
     }
   });
 
