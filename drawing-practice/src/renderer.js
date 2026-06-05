@@ -27,13 +27,15 @@ function edgeKey(p1, p2) {
 }
 
 // Dodaj sve bridove poligona u mapu, grupirano po tipu plohe.
-function collectEdges(map, points, type) {
+function collectEdges(map, points, type, faceIdx) {
   for (let i = 0; i < points.length; i++) {
     const p1 = points[i];
     const p2 = points[(i + 1) % points.length];
     const key = edgeKey(p1, p2);
-    if (!map.has(key)) map.set(key, { p1, p2, top: 0, rx: 0, ly: 0 });
-    map.get(key)[type]++;
+    if (!map.has(key)) map.set(key, { p1, p2, top: 0, rx: 0, ly: 0, faceIdxs: [] });
+    const e = map.get(key);
+    e[type]++;
+    e.faceIdxs.push(faceIdx);
   }
 }
 
@@ -90,7 +92,7 @@ export function renderIso(solid, opts = {}) {
   const RX_COLOR  = "#728199";
   const LY_COLOR  = "#9fb3c8";
 
-  const allFaces = []; // { pts, fill, depth, typeOrder }
+  const allFaces = []; // { pts, fill, depth, typeOrder, edgeParts: [] }
   const edgeMap  = new Map();
 
   solid.forEach((x, y, z) => {
@@ -104,8 +106,9 @@ export function renderIso(solid, opts = {}) {
         isoProject(x,   y+1, z+1, s),
       ];
       pts.forEach(trackPt);
-      allFaces.push({ pts, fill: TOP_COLOR, depth: base, typeOrder: 2 });
-      collectEdges(edgeMap, pts, "top");
+      const fi = allFaces.length;
+      allFaces.push({ pts, fill: TOP_COLOR, depth: base, typeOrder: 2, edgeParts: [] });
+      collectEdges(edgeMap, pts, "top", fi);
     }
     // Desna ploha (+x) — typeOrder 0.
     if (!solid.has(x + 1, y, z)) {
@@ -116,8 +119,9 @@ export function renderIso(solid, opts = {}) {
         isoProject(x+1, y,   z+1, s),
       ];
       pts.forEach(trackPt);
-      allFaces.push({ pts, fill: RX_COLOR, depth: base, typeOrder: 0 });
-      collectEdges(edgeMap, pts, "rx");
+      const fi = allFaces.length;
+      allFaces.push({ pts, fill: RX_COLOR, depth: base, typeOrder: 0, edgeParts: [] });
+      collectEdges(edgeMap, pts, "rx", fi);
     }
     // Lijeva ploha (+y) — typeOrder 1.
     if (!solid.has(x, y + 1, z)) {
@@ -128,48 +132,48 @@ export function renderIso(solid, opts = {}) {
         isoProject(x,   y+1, z+1, s),
       ];
       pts.forEach(trackPt);
-      allFaces.push({ pts, fill: LY_COLOR, depth: base, typeOrder: 1 });
-      collectEdges(edgeMap, pts, "ly");
+      const fi = allFaces.length;
+      allFaces.push({ pts, fill: LY_COLOR, depth: base, typeOrder: 1, edgeParts: [] });
+      collectEdges(edgeMap, pts, "ly", fi);
     }
   });
 
-  // Slikarski algoritam po plohi: dalje plohe prvo, kod iste dubine rx→ly→top.
-  allFaces.sort((a, b) => a.depth - b.depth || a.typeOrder - b.typeOrder);
-  const faceParts = allFaces.map(({ pts, fill }) => svgPoly(pts, fill));
-
-  // --- Klasifikacija bridova (3 razine) ---
-  // silhouettes: kinds==1, count==1  → pravi vanjski rub tijela (debelo)
-  // foldLines:   kinds>1             → prijelaz između vrsta ploha — vanjski kutovi
-  //                                    i unutarnje stepenice na udubljenima (srednje)
-  // gridLines:   kinds==1, count>=2  → ravna ploha se nastavlja, samo mreža (tanko)
-  const gridLines   = [];
-  const foldLines   = [];
-  const silhouettes = [];
-
-  for (const { p1, p2, top, rx, ly } of edgeMap.values()) {
+  // --- Klasifikacija bridova i dodjela licem (3 razine) ---
+  // Svaki brid se dodjeljuje plohi s najvećom dubinom (crtanom zadnjom) koja ga sadrži.
+  // Time se brid automatski skriva ako ga neka bliža ploha prekrije u 2D projekciji.
+  // silhouettes: kinds==1, count==1  → pravi vanjski rub tijela
+  // foldLines:   kinds>1             → prijelaz između vrsta ploha — kutovi, stepenice
+  // gridLines:   kinds==1, count>=2  → ravna ploha se nastavlja, mreža (crtkano)
+  for (const { p1, p2, top, rx, ly, faceIdxs } of edgeMap.values()) {
     const kinds = (top > 0 ? 1 : 0) + (rx > 0 ? 1 : 0) + (ly > 0 ? 1 : 0);
-    if (kinds > 1) {
-      foldLines.push([p1, p2]);
+    const count = top + rx + ly;
+
+    let stroke, sw, dash;
+    if (kinds > 1 || count === 1) {
+      stroke = "#1a2a38"; sw = 2.0; dash = null; // foldLine ili silhouette
     } else {
-      const count = top + rx + ly;
-      if (count >= 2) gridLines.push([p1, p2]);
-      else silhouettes.push([p1, p2]);
+      stroke = "#7e96a8"; sw = 0.7; dash = "4,4"; // gridLine
     }
+
+    // Pronađi plohу s najvećom (depth, typeOrder) — ona će biti nacrtana zadnja.
+    let bestIdx = faceIdxs[0];
+    for (const fi of faceIdxs) {
+      const a = allFaces[bestIdx], b = allFaces[fi];
+      if (b.depth > a.depth || (b.depth === a.depth && b.typeOrder > a.typeOrder))
+        bestIdx = fi;
+    }
+    allFaces[bestIdx].edgeParts.push(svgLine(p1, p2, stroke, sw, dash));
   }
 
-  const parts = [
-    ...groundParts,
-    ...faceParts,
-    // Mreža iste plohe — crtkano da se "očitavaju" veličine.
-    ...gridLines.map(([p1, p2]) =>
-      svgLine(p1, p2, "#7e96a8", 0.7, "4,4")),
-    // Prijelaz između vrsta ploha — kutovi i stepenice.
-    ...foldLines.map(([p1, p2]) =>
-      svgLine(p1, p2, "#1a2a38", 1.5)),
-    // Pravi vanjski rub tijela — najdeblje.
-    ...silhouettes.map(([p1, p2]) =>
-      svgLine(p1, p2, "#1a2a38", 2.4)),
-  ];
+  // Slikarski algoritam po plohi: dalje plohe prvo, kod iste dubine rx→ly→top.
+  // Bridovi se crtaju odmah nakon plohe kojoj su dodijeljeni — bliže plohe ih prekrivaju.
+  allFaces.sort((a, b) => a.depth - b.depth || a.typeOrder - b.typeOrder);
+
+  const parts = [...groundParts];
+  for (const face of allFaces) {
+    parts.push(svgPoly(face.pts, face.fill));
+    for (const ep of face.edgeParts) parts.push(ep);
+  }
 
   const pad = 16;
   const vb = `${(minX-pad).toFixed(2)} ${(minY-pad).toFixed(2)} ${(maxX-minX+pad*2).toFixed(2)} ${(maxY-minY+pad*2).toFixed(2)}`;
@@ -200,11 +204,10 @@ function buildView(solid, kind) {
       return arr;
     };
   } else if (kind === "tlocrt") {
-    // Tlocrt: promatrač na max-z, gleda prema -z. Prikaz: x→, y↓ (vrh=max-y, dno=0).
-    // Gornji rub tlocrta (r=0) susjedi dnu nacrta — y=D-1 (bliža strana promatraču nacrta).
+    // Tlocrt: promatrač na max-z, gleda prema -z. Prikaz: x→, y↓ (vrh=y=0, dno=y=D-1).
     cols = W; rows = D; frontIsMin = false;
     profileAt = (c, r) => {
-      const x = c, y = D - 1 - r;
+      const x = c, y = r;
       const arr = [];
       for (let z = 0; z < H; z++) if (solid.has(x, y, z)) arr.push(z);
       return arr;
