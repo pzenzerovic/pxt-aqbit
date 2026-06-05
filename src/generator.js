@@ -53,6 +53,29 @@ function carveCorner(solid, w, d, h, rng, maxExtent) {
       for (let z = z0; z < z0 + rz; z++) solid.remove(x, y, z);
 }
 
+// Popuni svaku skrivenu šupljinu — što korisnik ne vidi iz izometrije,
+// mora biti puno (jer ne može pretpostaviti drugačije).
+// Prazna ćelija je "vidljiva" ako je nezaklonjena gledano niz +x, +y ili +z
+// (tri plohe vidljive u izometriji). Ako nije izložena nijednoj od njih,
+// to je skrivena šupljina sa stražnje strane → popuni je.
+function fillHidden(solid) {
+  const { w, d, h } = solid;
+  const toFill = [];
+  for (let x = 0; x < w; x++)
+    for (let y = 0; y < d; y++)
+      for (let z = 0; z < h; z++) {
+        if (solid.has(x, y, z)) continue;
+        let ex = true;
+        for (let xx = x + 1; xx < w; xx++) if (solid.has(xx, y, z)) { ex = false; break; }
+        let ey = true;
+        for (let yy = y + 1; yy < d; yy++) if (solid.has(x, yy, z)) { ey = false; break; }
+        let ez = true;
+        for (let zz = z + 1; zz < h; zz++) if (solid.has(x, y, zz)) { ez = false; break; }
+        if (!ex && !ey && !ez) toFill.push([x, y, z]);
+      }
+  for (const [x, y, z] of toFill) solid.add(x, y, z);
+}
+
 export function generateSolid(level, seed) {
   const cfg = LEVELS[level] || LEVELS[1];
   const rng = makeRng(seed);
@@ -63,7 +86,6 @@ export function generateSolid(level, seed) {
     const h = randInt(rng, cfg.dim[0], cfg.dim[1]);
 
     const solid = Solid.box(w, d, h);
-    const fullCount = w * d * h;
 
     const nCarves = randInt(rng, cfg.carves[0], cfg.carves[1]);
     for (let i = 0; i < nCarves; i++) {
@@ -72,26 +94,18 @@ export function generateSolid(level, seed) {
 
     solid.normalize();
 
+    // Popuni skrivene šupljine (stražnja strana mora biti puna).
+    fillHidden(solid);
+
     // Uvjeti valjanosti.
     if (solid.size === 0) continue;
     if (!solid.isConnected()) continue;
     if (solid.w > 5 || solid.d > 5 || solid.h > 5) continue;
-    // Za razine > 1 traži da nešto bude izrezano (da nije puni kvadar).
-    if (level > 1 && solid.size === fullCount) continue;
     // Izbjegni predegenerirane (premale) oblike.
     if (solid.size < 2) continue;
-    // Svaki voksel mora biti vidljiv iz izometrijskog kuta (+x/+y/+z smjer).
-    // Voksel bez ijedne slobodne plohe prema +x, +y ili +z nije vidljiv i
-    // bio bi zbunjujući (tamna "spilja" na dnu tijela).
-    let allVisible = true;
-    solid.forEach((x, y, z) => {
-      if (!allVisible) return;
-      if (!solid.has(x + 1, y, z)) return;
-      if (!solid.has(x, y + 1, z)) return;
-      if (!solid.has(x, y, z + 1)) return;
-      allVisible = false;
-    });
-    if (!allVisible) continue;
+    // Za razine > 1 traži da nakon popune nešto ostane izrezano (vidljiv detalj,
+    // ne puni kvadar). fullCount je dimenzija prije normalizacije — koristi novu.
+    if (level > 1 && solid.size === solid.w * solid.d * solid.h) continue;
 
     return solid;
   }

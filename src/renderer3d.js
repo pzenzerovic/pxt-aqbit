@@ -70,8 +70,8 @@ function buildScene(solid) {
   for (let j = 0; j <= D; j++) { gPts.push(...B(T(0,j,0)), ...B(T(W,j,0))); }
   const gGeo = new THREE.BufferGeometry();
   gGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(gPts), 3));
-  scene.add(new THREE.LineSegments(gGeo,
-    new THREE.LineBasicMaterial({ color: 0xc4ccd6, linewidth: 0.7 })));
+  scene.add(new THREE.LineSegments(gGeo, new THREE.LineDashedMaterial(
+    { color: 0xaab6c2, linewidth: 0.8, dashSize: 5, gapSize: 5 })));
 
   // --- Vidljive plohe voksela ---
   const matTop = new THREE.MeshBasicMaterial({ color: 0xdde6ef, side: THREE.DoubleSide });
@@ -103,16 +103,20 @@ function buildScene(solid) {
     else                 silPts.push(...B(a), ...B(b));
   }
 
-  function addLines(pts, color, linewidth) {
+  function addLines(pts, color, linewidth, dash) {
     if (!pts.length) return;
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(pts), 3));
-    scene.add(new THREE.LineSegments(geo,
-      new THREE.LineBasicMaterial({ color, linewidth })));
+    const mat = dash
+      ? new THREE.LineDashedMaterial({ color, linewidth, dashSize: dash, gapSize: dash })
+      : new THREE.LineBasicMaterial({ color, linewidth });
+    scene.add(new THREE.LineSegments(geo, mat));
   }
-  addLines(gridPts, 0x8898a8, 0.5);
-  addLines(foldPts, 0x3d4f61, 0.8);
-  addLines(silPts,  0x1a2a38, 1.8);
+  // Grid linije (podjele ploha) — crtkano, da se "očitavaju" veličine.
+  addLines(gridPts, 0x9aa7b4, 0.8, 5);
+  // Stvarni bridovi tijela — pune, deblje crte.
+  addLines(foldPts, 0x2a3a48, 1.6);
+  addLines(silPts,  0x14222e, 2.6);
 
   return scene;
 }
