@@ -93,43 +93,69 @@ function svgLine(p1, p2, stroke, sw, dash) {
   return `<line x1="${p1[0].toFixed(2)}" y1="${p1[1].toFixed(2)}" x2="${p2[0].toFixed(2)}" y2="${p2[1].toFixed(2)}" stroke="${stroke}" stroke-width="${sw}"${d} stroke-linecap="round"/>`;
 }
 
-// Za brid s jednom pločom (count=1, kinds=1): provjeri je li pravi siluetni rub
-// ili unutarnji rub stepenice/utora. Svaki brid ima 4 susjedna voksela u ravnini
-// okomitoj na brid; 2 su "sa strane plohe", 2 su "s vanjske strane" (duž normale plohe).
-// Ako postoji voksel s vanjske strane → rub je prijelaz stepenice → tanka linija.
-// Koordinate x0/y0/z0 su min od oba vrha jer a/b mogu biti u bilo kom redoslijedu.
+// Provjeri je li brid "unutarnji" — rub stepenice/utora ili konkavni spoj — umjesto
+// pravog vanjskog ruba. Vrijedi i za count=1 bridove i za foldLine bridove (kinds=2).
+//
+// Logika po vrsti brida (x0/y0/z0 = min koordinate, jer redoslijed a/b ovisi o poligonu):
+//
+//   Vertikalni (z varira):
+//     LY → postoji li voksel s vanjske (+y) strane?
+//     RX → postoji li voksel s vanjske (+x) strane?
+//     LY+RX prijelaz → popunjava li voksel kut (x0,y0,z0)?
+//
+//   Horizontalni u x (y i z konstantni):
+//     LY → postoji li voksel s vanjske strane (+y)?
+//     TOP count=1 → je li susjedni voksel iste visine na "outward" strani?
+//            (odredi stranu po tome koji voksel iznad bridom blokira gornju plohu)
+//     TOP+LY prijelaz → popunjava li voksel (x0,y0,z0)?
+//
+//   Horizontalni u y (x i z konstantni):
+//     RX → postoji li voksel s vanjske strane (+x)?
+//     TOP count=1 → kao gore, ali za x-smjer
+//     TOP+RX prijelaz → popunjava li voksel (x0,y0,z0)?
 function isInnerStepEdge(solid, e) {
   const [ax, ay, az] = e.a;
   const [bx, by, bz] = e.b;
   const x0 = Math.min(ax, bx), y0 = Math.min(ay, by), z0 = Math.min(az, bz);
-  let outward;
+
   if (az !== bz) {
-    // Vertikalni brid (z varira), x i y konstantni
-    if (e.ly === 1)     outward = [[x0-1, y0, z0], [x0, y0, z0]];   // LY: vanjska strana +y
-    else                outward = [[x0, y0-1, z0], [x0, y0, z0]];   // RX: vanjska strana +x
-  } else if (ax !== bx) {
-    // Horizontalni brid u x, y i z konstantni
-    if (e.ly === 1)     outward = [[x0, y0, z0-1], [x0, y0, z0]];   // LY: vanjska strana +y
-    else                return false;                                  // TOP: uvijek debelo
-  } else {
-    // Horizontalni brid u y, x i z konstantni
-    if (e.rx === 1)     outward = [[x0, y0, z0-1], [x0, y0, z0]];   // RX: vanjska strana +x
-    else                return false;                                  // TOP: uvijek debelo
+    // Vertikalni brid (z varira)
+    if (e.ly && !e.rx)  return solid.has(x0-1, y0, z0) || solid.has(x0, y0, z0);
+    if (e.rx && !e.ly)  return solid.has(x0, y0-1, z0) || solid.has(x0, y0, z0);
+    return solid.has(x0, y0, z0);  // LY+RX prijelaz: provjeri kutni voksel
   }
-  return outward.some(([x, y, z]) => solid.has(x, y, z));
+
+  if (ax !== bx) {
+    // Horizontalni brid u x
+    if (e.ly && !e.top) return solid.has(x0, y0, z0-1) || solid.has(x0, y0, z0);
+    if (e.top && !e.ly) {
+      // Čista TOP ploha: utvrdi koja je strana "outward" po tome koji voksel iznad blokira
+      if (solid.has(x0, y0-1, z0)) return solid.has(x0, y0-1, z0-1);
+      if (solid.has(x0, y0,   z0)) return solid.has(x0, y0,   z0-1);
+      return false;
+    }
+    return solid.has(x0, y0, z0);  // TOP+LY prijelaz
+  }
+
+  // Horizontalni brid u y
+  if (e.rx && !e.top) return solid.has(x0, y0, z0-1) || solid.has(x0, y0, z0);
+  if (e.top && !e.rx) {
+    if (solid.has(x0-1, y0, z0)) return solid.has(x0-1, y0, z0-1);
+    if (solid.has(x0,   y0, z0)) return solid.has(x0,   y0, z0-1);
+    return false;
+  }
+  return solid.has(x0, y0, z0);  // TOP+RX prijelaz
 }
 
-// Klasifikacija jednog brida na temelju ploha koje ga dijele:
-//   silhouette: kinds==1, count==1, nema voksela izvana → pravi vanjski rub
-//   foldLine:   kinds>1                                  → prijelaz između vrsta ploha
-//   stepEdge:   kinds==1, count==1, ali ima voksel izvana → unutarnji rub stepenice
-//   gridLine:   kinds==1, count>=2                       → ravnina se nastavlja (crtkano)
-// Vraća "thick" (silhouette/fold) ili "thin" (grid/step).
+// Klasifikacija jednog brida:
+//   gridLine:     kinds==1, count>=2  → ravnina se nastavlja (crtkano)
+//   silhouette:   count==1 i NIJE unutarnji → pravi vanjski rub (debelo)
+//   foldLine:     kinds>1  i NIJE konkavni  → konveksni prijelaz (debelo)
+//   stepEdge/concaveFold: unutarnji rub stepenice ili konkavni kut → tanko
 function classifyIsoEdge(e, solid) {
   const kinds = (e.top > 0 ? 1 : 0) + (e.rx > 0 ? 1 : 0) + (e.ly > 0 ? 1 : 0);
   const count = e.top + e.rx + e.ly;
-  if (kinds > 1) return "thick";
-  if (count === 1) return isInnerStepEdge(solid, e) ? "thin" : "thick";
+  if (kinds > 1 || count === 1) return isInnerStepEdge(solid, e) ? "thin" : "thick";
   return "thin";
 }
 
