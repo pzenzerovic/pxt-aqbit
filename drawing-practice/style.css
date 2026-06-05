@@ -165,6 +165,12 @@ body {
   font-size: 12px;
   padding: 16px;
 }
+.buildstamp {
+  font-family: monospace;
+  font-size: 11px;
+  color: #98a2ad;
+  margin-top: 4px;
+}
 
 /* Ispis */
 @media print {

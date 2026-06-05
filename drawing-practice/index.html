@@ -40,8 +40,21 @@
 
   <footer class="pagefoot">
     <p>Puna linija = vidljivi brid · isprekidana linija = skriveni brid · 1 kocka = 10 cm</p>
+    <p class="buildstamp" id="buildstamp">build: crtkani grid + popuna · 2026-06-05</p>
   </footer>
 
+  <script>
+    // Prikaži stvarni SHA zadnjeg commita na gh-pages (potvrda da je live verzija svježa).
+    fetch('https://api.github.com/repos/pzenzerovic/pxt-aqbit/commits/gh-pages')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => {
+        if (!c || !c.sha) return;
+        const el = document.getElementById('buildstamp');
+        const when = (c.commit?.committer?.date || '').slice(0, 16).replace('T', ' ');
+        el.textContent = `commit ${c.sha.slice(0, 7)} · ${when} UTC`;
+      })
+      .catch(() => {});
+  </script>
   <script type="module" src="src/app.js"></script>
 </body>
 </html>
