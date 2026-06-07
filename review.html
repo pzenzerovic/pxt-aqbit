@@ -125,7 +125,9 @@
     <div class="proj-cell"><h3>Bokocrt</h3><div id="pBokocrt"></div></div>
     <div class="proj-cell"><h3>Tlocrt</h3><div id="pTlocrt"></div></div>
     <div class="proj-cell" style="display:flex;align-items:center;justify-content:center">
-      <div id="boxWarning" style="font-size:.8rem;color:#b07000;display:none">⚠ Puni kvadar (bez usjeka)</div>
+      <div id="boxWarning"    style="font-size:.8rem;color:#b07000;display:none">⚠ Puni kvadar (bez usjeka)</div>
+      <div id="filterWarning" style="font-size:.8rem;color:#cc2200;display:none">✗ Odbijeno novim filterom</div>
+      <div id="filterOk"      style="font-size:.8rem;color:#006600;display:none">✓ Prolazi novi filter</div>
     </div>
   </div>
 </div>
@@ -145,13 +147,13 @@
     <button class="btn btn-clr"  id="btnClear">Obriši log</button>
   </div>
   <table>
-    <thead><tr><th>#</th><th>Seed</th><th>Dim</th><th>Voksela</th><th>Usjeci</th><th>Verdict</th><th>Kada</th></tr></thead>
+    <thead><tr><th>#</th><th>Seed</th><th>Dim</th><th>Voksela</th><th>Usjeci</th><th>Filter</th><th>Verdict</th><th>Kada</th></tr></thead>
     <tbody id="logBody"></tbody>
   </table>
 </div>
 
 <script type="module">
-import { generateSolidCustom } from './src/generator.js';
+import { generateSolidCustom, isCutReadable } from './src/generator.js';
 import { renderIso, renderView } from './src/renderer.js';
 
 const LOG_KEY = 'review_log_v1';
@@ -185,9 +187,12 @@ function show(s) {
     renderIso(solid, { showGround: true, showGridCont: true, showThick: true, scale: 38 });
 
   const isBox = solid.size === solid.w * solid.d * solid.h;
+  const passes = !isBox && isCutReadable(solid);
   document.getElementById('dimNote').textContent =
     `${solid.w} × ${solid.d} × ${solid.h}  ·  ${solid.size} voksela  ·  seed ${seed}`;
-  document.getElementById('boxWarning').style.display = isBox ? '' : 'none';
+  document.getElementById('boxWarning').style.display    = isBox             ? '' : 'none';
+  document.getElementById('filterWarning').style.display = !isBox && !passes ? '' : 'none';
+  document.getElementById('filterOk').style.display      = passes            ? '' : 'none';
 
   document.getElementById('pNacrt').innerHTML   = renderView(solid, 'nacrt',   { solution: true, cell: 30 });
   document.getElementById('pBokocrt').innerHTML = renderView(solid, 'bokocrt', { solution: true, cell: 30 });
@@ -197,9 +202,10 @@ function show(s) {
 function verdict(v) {
   const c = cfg();
   const isBox = solid.size === solid.w * solid.d * solid.h;
+  const passes = !isBox && isCutReadable(solid);
   log.unshift({
     seed, dims: `${solid.w}×${solid.d}×${solid.h}`,
-    size: solid.size, carves: c.carves, isBox,
+    size: solid.size, carves: c.carves, isBox, passes,
     verdict: v, ts: Date.now(),
   });
   localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 1000)));
@@ -216,6 +222,7 @@ function renderLog() {
       <td>${e.dims}</td>
       <td>${e.size}</td>
       <td>${e.carves}</td>
+      <td style="color:${e.isBox ? '#b07000' : e.passes ? '#006600' : '#cc2200'}">${e.isBox ? '⬜ box' : e.passes ? '✓' : '✗'}</td>
       <td class="v-${e.verdict}">${e.verdict === 'ok' ? '✓ OK' : '✗ Nije OK'}</td>
       <td>${new Date(e.ts).toLocaleTimeString()}</td>
     </tr>`).join('');
