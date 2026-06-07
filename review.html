@@ -141,6 +141,7 @@
   <div class="log-head">
     <h2>Log (<span id="logCount">0</span>)</h2>
     <button class="btn btn-copy" id="btnCopy">Kopiraj OK seedove</button>
+    <button class="btn btn-no"   id="btnCopyBad" style="font-size:.76rem;padding:.22rem .55rem">Kopiraj Nije OK</button>
     <button class="btn btn-clr"  id="btnClear">Obriši log</button>
   </div>
   <table>
@@ -236,6 +237,13 @@ cSeed.addEventListener('change', () => show(parseInt(cSeed.value) || 0));
 document.getElementById('btnCopy').onclick = () => {
   const txt = log.filter(e => e.verdict === 'ok').map(e => e.seed).join('\n');
   navigator.clipboard?.writeText(txt).catch(() => prompt('OK seedovi:', txt));
+};
+document.getElementById('btnCopyBad').onclick = () => {
+  const txt = log
+    .filter(e => e.verdict === 'notok')
+    .map(e => `seed:${e.seed} ${e.dims} carves:${e.carves}`)
+    .join('\n');
+  navigator.clipboard?.writeText(txt).catch(() => prompt('Nije OK:', txt));
 };
 document.getElementById('btnClear').onclick = () => {
   if (confirm('Obrisati cijeli log?')) {
