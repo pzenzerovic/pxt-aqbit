@@ -71,6 +71,14 @@ function isCutReadable(solid) {
   // Rule D: complexity limit — max 25% of bounding volume
   if (missing.length > w * d * h * 0.25) return false;
 
+  // Rule E: every missing voxel must sit on an outer visible face
+  // (x = w-1, y = d-1, or z = h-1). Voxels not on any visible face are
+  // hidden behind the solid in all three ISO projections and create
+  // unreadable ambiguity.
+  for (const [x, y, z] of missing) {
+    if (x !== w - 1 && y !== d - 1 && z !== h - 1) return false;
+  }
+
   // Rule A: every connected component has a voxel visible from 2+ directions
   const missingSet = new Set(missing.map(([x, y, z]) => x + "," + y + "," + z));
   const visited = new Set();
