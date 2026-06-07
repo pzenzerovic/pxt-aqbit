@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Review alat — provjera tijela</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: #f0f4f8; color: #1a2a38; }
+
+    /* ── topbar ─────────────────────────────────────────────────── */
+    .topbar {
+      background: #1a2a38; color: #c8d8e8;
+      padding: .5rem 1rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    }
+    .topbar-title { font-weight: 700; font-size: .95rem; white-space: nowrap; }
+
+    .ctrl-group { display: flex; align-items: center; gap: .35rem; font-size: .82rem; }
+    .ctrl-group label { color: #8aa0b8; }
+
+    input[type=number] {
+      width: 4rem; padding: .2rem .4rem;
+      border: 1px solid #3a5f7a; background: #243448; color: #c8d8e8;
+      border-radius: 3px; text-align: center; font-size: .85rem;
+    }
+    .seed-input { width: 8.5rem; }
+
+    .btn {
+      cursor: pointer; border: none; border-radius: 3px;
+      padding: .28rem .65rem; font-size: .82rem; transition: filter .12s;
+    }
+    .btn:hover { filter: brightness(1.18); }
+    .btn-nav  { background: #2c4a62; color: #a8c0d8; }
+    .btn-ok   { background: #2d8a4e; color: #fff; font-size: .95rem; padding: .45rem 1.5rem; font-weight: 600; }
+    .btn-no   { background: #c0392b; color: #fff; font-size: .95rem; padding: .45rem 1.5rem; font-weight: 600; }
+    .btn-skip { background: #7a8a98; color: #fff; padding: .45rem .9rem; }
+    .btn-copy { background: #4a7090; color: #fff; font-size: .76rem; padding: .22rem .55rem; }
+    .btn-clr  { background: #b0bcc8; color: #3a4a58; font-size: .76rem; padding: .22rem .55rem; }
+
+    .seed-row { margin-left: auto; display: flex; align-items: center; gap: .4rem; }
+
+    /* ── workspace ──────────────────────────────────────────────── */
+    .workspace { display: flex; gap: 1.5rem; padding: 1rem 1.5rem; align-items: flex-start; }
+
+    .iso-col { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; gap: .5rem; }
+    .iso-col svg.iso {
+      display: block; width: 340px;
+      background: #fff; border-radius: 6px; box-shadow: 0 1px 5px rgba(0,0,0,.13);
+    }
+    .dim-note { font-size: .78rem; color: #6b7886; }
+
+    .proj-col {
+      flex: 1; display: grid;
+      grid-template-columns: 1fr 1fr; grid-template-rows: auto auto;
+      gap: .9rem; align-content: start;
+    }
+    .proj-cell {
+      background: #fff; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+      padding: .5rem .6rem;
+    }
+    .proj-cell h3 {
+      font-size: .7rem; color: #8a9aa8; font-weight: 600;
+      text-transform: uppercase; letter-spacing: .05em; margin-bottom: .3rem;
+    }
+    .proj-cell svg.view { display: block; width: 100%; }
+
+    /* ── verdict bar ────────────────────────────────────────────── */
+    .verdict {
+      background: #fff; border-top: 1px solid #dde4ea; border-bottom: 1px solid #dde4ea;
+      padding: .65rem 1.5rem; display: flex; align-items: center; gap: .8rem;
+    }
+    .key-hint { margin-left: auto; font-size: .72rem; color: #8a9aa8; }
+
+    /* ── log ────────────────────────────────────────────────────── */
+    .log-section { padding: .8rem 1.5rem 2.5rem; }
+    .log-head { display: flex; align-items: center; gap: .8rem; margin-bottom: .55rem; }
+    .log-head h2 { font-size: .88rem; color: #4a5866; }
+
+    table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+    th {
+      background: #e8ecf0; padding: .3rem .6rem;
+      text-align: left; color: #4a5866; font-weight: 600; border-bottom: 1px solid #ccd4dc;
+    }
+    td { padding: .28rem .6rem; border-bottom: 1px solid #eaecf0; }
+    tr.ok   td:first-child { border-left: 3px solid #2d8a4e; }
+    tr.notok td:first-child { border-left: 3px solid #c0392b; }
+    .v-ok    { color: #2d8a4e; font-weight: 600; }
+    .v-notok { color: #c0392b; font-weight: 600; }
+    .seed-lnk { cursor: pointer; color: #4a7090; text-decoration: underline; }
+    .seed-lnk:hover { color: #1a3a5a; }
+    .plain-box { background: #fff8e0; }
+    .plain-box td:first-child { border-left: 3px solid #e0a000; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="topbar-title">Review alat</span>
+
+  <div class="ctrl-group">
+    <label>W</label><input type="number" id="cW" min="2" max="5" value="3">
+    <label>D</label><input type="number" id="cD" min="2" max="5" value="3">
+    <label>H</label><input type="number" id="cH" min="2" max="5" value="3">
+  </div>
+  <div class="ctrl-group">
+    <label>Usjeci</label><input type="number" id="cCarves" min="0" max="4" value="2">
+  </div>
+
+  <div class="seed-row">
+    <span style="font-size:.82rem;color:#8aa0b8">Seed</span>
+    <input type="number" class="seed-input" id="cSeed" min="0" max="999999999" value="0">
+    <button class="btn btn-nav" id="btnPrev"     title="Prethodni">◀</button>
+    <button class="btn btn-nav" id="btnNextSeed" title="Sljedeći">▶</button>
+    <button class="btn btn-nav" id="btnRandom"   title="Nasumični">⟳</button>
+  </div>
+</div>
+
+<div class="workspace">
+  <div class="iso-col">
+    <div id="isoView"></div>
+    <div class="dim-note" id="dimNote"></div>
+  </div>
+  <div class="proj-col">
+    <div class="proj-cell"><h3>Nacrt</h3><div id="pNacrt"></div></div>
+    <div class="proj-cell"><h3>Bokocrt</h3><div id="pBokocrt"></div></div>
+    <div class="proj-cell"><h3>Tlocrt</h3><div id="pTlocrt"></div></div>
+    <div class="proj-cell" style="display:flex;align-items:center;justify-content:center">
+      <div id="boxWarning" style="font-size:.8rem;color:#b07000;display:none">⚠ Puni kvadar (bez usjeka)</div>
+    </div>
+  </div>
+</div>
+
+<div class="verdict">
+  <button class="btn btn-ok"   id="btnOk">✓ OK</button>
+  <button class="btn btn-no"   id="btnNo">✗ Nije OK</button>
+  <button class="btn btn-skip" id="btnSkip">Preskoči</button>
+  <span class="key-hint">Y = OK &nbsp;·&nbsp; N = Nije OK &nbsp;·&nbsp; Space = Preskoči</span>
+</div>
+
+<div class="log-section">
+  <div class="log-head">
+    <h2>Log (<span id="logCount">0</span>)</h2>
+    <button class="btn btn-copy" id="btnCopy">Kopiraj OK seedove</button>
+    <button class="btn btn-clr"  id="btnClear">Obriši log</button>
+  </div>
+  <table>
+    <thead><tr><th>#</th><th>Seed</th><th>Dim</th><th>Voksela</th><th>Usjeci</th><th>Verdict</th><th>Kada</th></tr></thead>
+    <tbody id="logBody"></tbody>
+  </table>
+</div>
+
+<script type="module">
+import { generateSolidCustom } from './src/generator.js';
+import { renderIso, renderView } from './src/renderer.js';
+
+const LOG_KEY = 'review_log_v1';
+let log = (() => { try { return JSON.parse(localStorage.getItem(LOG_KEY)) || []; } catch { return []; } })();
+
+let seed = (Math.random() * 1e9) | 0;
+let solid = null;
+
+const cW      = document.getElementById('cW');
+const cD      = document.getElementById('cD');
+const cH      = document.getElementById('cH');
+const cCarves = document.getElementById('cCarves');
+const cSeed   = document.getElementById('cSeed');
+
+function cfg() {
+  return {
+    w:      Math.max(2, Math.min(5, parseInt(cW.value)      || 3)),
+    d:      Math.max(2, Math.min(5, parseInt(cD.value)      || 3)),
+    h:      Math.max(2, Math.min(5, parseInt(cH.value)      || 3)),
+    carves: Math.max(0, Math.min(4, parseInt(cCarves.value) || 2)),
+  };
+}
+
+function show(s) {
+  seed = ((s >>> 0) % 1e9) | 0;
+  cSeed.value = seed;
+  const c = cfg();
+  solid = generateSolidCustom({ ...c, seed });
+
+  document.getElementById('isoView').innerHTML =
+    renderIso(solid, { showGround: true, showGridCont: true, showThick: true, scale: 38 });
+
+  const isBox = solid.size === solid.w * solid.d * solid.h;
+  document.getElementById('dimNote').textContent =
+    `${solid.w} × ${solid.d} × ${solid.h}  ·  ${solid.size} voksela  ·  seed ${seed}`;
+  document.getElementById('boxWarning').style.display = isBox ? '' : 'none';
+
+  document.getElementById('pNacrt').innerHTML   = renderView(solid, 'nacrt',   { solution: true, cell: 30 });
+  document.getElementById('pBokocrt').innerHTML = renderView(solid, 'bokocrt', { solution: true, cell: 30 });
+  document.getElementById('pTlocrt').innerHTML  = renderView(solid, 'tlocrt',  { solution: true, cell: 30 });
+}
+
+function verdict(v) {
+  const c = cfg();
+  const isBox = solid.size === solid.w * solid.d * solid.h;
+  log.unshift({
+    seed, dims: `${solid.w}×${solid.d}×${solid.h}`,
+    size: solid.size, carves: c.carves, isBox,
+    verdict: v, ts: Date.now(),
+  });
+  localStorage.setItem(LOG_KEY, JSON.stringify(log.slice(0, 1000)));
+  renderLog();
+  show(seed + 1);
+}
+
+function renderLog() {
+  document.getElementById('logCount').textContent = log.length;
+  document.getElementById('logBody').innerHTML = log.map((e, i) => `
+    <tr class="${e.isBox ? 'plain-box' : e.verdict}">
+      <td>${log.length - i}</td>
+      <td><span class="seed-lnk" data-seed="${e.seed}">${e.seed}</span></td>
+      <td>${e.dims}</td>
+      <td>${e.size}</td>
+      <td>${e.carves}</td>
+      <td class="v-${e.verdict}">${e.verdict === 'ok' ? '✓ OK' : '✗ Nije OK'}</td>
+      <td>${new Date(e.ts).toLocaleTimeString()}</td>
+    </tr>`).join('');
+}
+
+show(seed);
+renderLog();
+
+document.getElementById('btnOk').onclick       = () => verdict('ok');
+document.getElementById('btnNo').onclick       = () => verdict('notok');
+document.getElementById('btnSkip').onclick     = () => show(seed + 1);
+document.getElementById('btnPrev').onclick     = () => show(seed - 1);
+document.getElementById('btnNextSeed').onclick = () => show(seed + 1);
+document.getElementById('btnRandom').onclick   = () => show((Math.random() * 1e9) | 0);
+
+cSeed.addEventListener('change', () => show(parseInt(cSeed.value) || 0));
+[cW, cD, cH, cCarves].forEach(el => el.addEventListener('change', () => show(seed)));
+
+document.getElementById('btnCopy').onclick = () => {
+  const txt = log.filter(e => e.verdict === 'ok').map(e => e.seed).join('\n');
+  navigator.clipboard?.writeText(txt).catch(() => prompt('OK seedovi:', txt));
+};
+document.getElementById('btnClear').onclick = () => {
+  if (confirm('Obrisati cijeli log?')) {
+    log = []; localStorage.removeItem(LOG_KEY); renderLog();
+  }
+};
+
+document.getElementById('logBody').addEventListener('click', e => {
+  const s = e.target.closest('[data-seed]')?.dataset.seed;
+  if (s != null) show(parseInt(s));
+});
+
+document.addEventListener('keydown', e => {
+  if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
+  if (e.key === 'y' || e.key === 'Y') verdict('ok');
+  else if (e.key === 'n' || e.key === 'N') verdict('notok');
+  else if (e.key === ' ')                  { e.preventDefault(); show(seed + 1); }
+  else if (e.key === 'ArrowRight')         show(seed + 1);
+  else if (e.key === 'ArrowLeft')          show(seed - 1);
+});
+</script>
+</body>
+</html>

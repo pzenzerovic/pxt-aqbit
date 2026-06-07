@@ -115,6 +115,20 @@ export function generateSolid(level, seed) {
   return Solid.box(2, 2, 2);
 }
 
+// Generiranje s eksplicitnim dimenzijama — za review alat.
+export function generateSolidCustom({ w, d, h, carves, seed }) {
+  const rng = makeRng(seed);
+  const maxE = Math.max(1, Math.ceil(Math.min(w, d, h) / 2));
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const solid = Solid.box(w, d, h);
+    for (let i = 0; i < carves; i++) carveCorner(solid, w, d, h, rng, maxE);
+    solid.normalize();
+    fillHidden(solid);
+    if (solid.size > 0 && solid.isConnected()) return solid;
+  }
+  return Solid.box(w, d, h);
+}
+
 // Generiraj cijeli set zadataka: po `perLevel` zadataka za svaku razinu, sortirano lako→teško.
 export function generateSet(baseSeed, perLevel = 3) {
   const exercises = [];
