@@ -300,7 +300,7 @@ export function renderIso(solid, opts = {}) {
   if (showThick)
     for (const e of byType.thick)
       for (const [q1, q2] of e.segments)
-        parts.push(svgLine(q1, q2, "#00cc00", 2.0, null));
+        parts.push(svgLine(q1, q2, "#1a2a38", 2.0, null));
 
   // Bbox grid — na vrhu svega (vidi se i tamo gdje ima voksela)
   if (showBbox)

@@ -93,9 +93,9 @@ function buildState(seed, perLevel, opts = {}) {
   const {
     showGround   = true,
     showGridCont = true,
-    showStep     = true,
+    showStep     = false,
     showThick    = true,
-    showGrid     = true,
+    showGrid     = false,
   } = opts;
   return { seed, perLevel, showGround, showGridCont, showStep, showThick, showGrid,
            exercises: generateSet(seed, perLevel) };

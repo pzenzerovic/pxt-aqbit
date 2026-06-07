@@ -31,12 +31,13 @@ const LEVELS = {
 // pa ga nikad ne urežemo — korisnik bi vidio puni blok ali ne i urez.
 function carveCorner(solid, w, d, h, rng, maxExtent) {
   let fromMaxX, fromMaxY, fromMaxZ;
-  // Odbaci jedinu skrivenu kombinaciju (sve tri min) — pokušaj do 6 puta.
+  // Odbaci slučajeve gdje su i fromMaxX i fromMaxY false — te rezove korisnik ne može
+  // nedvosmisleno pročitati u izometriji (dno ureza je skriveno iso-aliasingom).
   for (let t = 0; t < 6; t++) {
     fromMaxX = rng() < 0.5;
     fromMaxY = rng() < 0.5;
     fromMaxZ = rng() < 0.5;
-    if (fromMaxX || fromMaxY || fromMaxZ) break;
+    if (fromMaxX || fromMaxY) break;
   }
 
   // Veličina ureza po svakoj osi: barem 1, najviše dim-1 (da ostane materijala).
