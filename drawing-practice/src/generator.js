@@ -54,10 +54,10 @@ function carveCorner(solid, w, d, h, rng, maxExtent) {
 }
 
 // Provjeri je li izrezani dio metodički smislen za vježbu projekcija.
-// Uvjet A: barem jedna prazna ćelija mora biti vidljiva odozgo (+z) I
-//          s barem jedne bočne strane (+x ili +y) — rez mora utjecati na tlocrt.
-// Uvjet B: sve prazne ćelije moraju biti međusobno povezane (nema dva
-//          odvojena ureza koji bi zbunjivali studenta).
+// D: odrezano smije biti najviše 25 % volumena (složeniji urezi su neodredivi).
+// A: svaka povezana komponenta praznih ćelija mora imati barem jednu ćeliju
+//    vidljivu iz ≥2 smjera — osigurava čitljivost svakog ureza zasebno.
+// C: barem jedna bočna ploha (+x ili +y) mora biti zastupljena u izloženosti.
 function isCutReadable(solid) {
   const { w, d, h } = solid;
   const missing = [];
@@ -68,40 +68,47 @@ function isCutReadable(solid) {
 
   if (missing.length === 0) return true;
 
-  // Uvjet A — pz + (px ili py) za barem jednu ćeliju.
-  const hasReadableCorner = missing.some(([x, y, z]) => {
-    let px = true, py = true, pz = true;
-    for (let xx = x + 1; xx < w; xx++) if (solid.has(xx, y, z)) { px = false; break; }
-    for (let yy = y + 1; yy < d; yy++) if (solid.has(x, yy, z)) { py = false; break; }
-    for (let zz = z + 1; zz < h; zz++) if (solid.has(x, y, zz)) { pz = false; break; }
-    return pz && (px || py);
-  });
-  if (!hasReadableCorner) return false;
+  // Rule D: complexity limit — max 25% of bounding volume
+  if (missing.length > w * d * h * 0.25) return false;
 
-  // Uvjet C — rez mora biti vidljiv s obje bočne strane (+x i +y):
-  // barem jedna ćelija ima px=1 i barem jedna ima py=1.
-  // Sprječava ureze koji su potpuno skriveni s jedne bočne strane izometrije.
+  // Rule A: every connected component has a voxel visible from 2+ directions
+  const missingSet = new Set(missing.map(([x, y, z]) => x + "," + y + "," + z));
+  const visited = new Set();
+  const dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+  for (const [sx, sy, sz] of missing) {
+    const key = sx + "," + sy + "," + sz;
+    if (visited.has(key)) continue;
+    const comp = [];
+    const stack = [[sx, sy, sz]];
+    visited.add(key);
+    while (stack.length) {
+      const [x, y, z] = stack.pop();
+      comp.push([x, y, z]);
+      for (const [dx, dy, dz] of dirs) {
+        const k = (x + dx) + "," + (y + dy) + "," + (z + dz);
+        if (missingSet.has(k) && !visited.has(k)) { visited.add(k); stack.push([x + dx, y + dy, z + dz]); }
+      }
+    }
+    const readable = comp.some(([x, y, z]) => {
+      let px = true, py = true, pz = true;
+      for (let xx = x + 1; xx < w; xx++) if (solid.has(xx, y, z)) { px = false; break; }
+      for (let yy = y + 1; yy < d; yy++) if (solid.has(x, yy, z)) { py = false; break; }
+      for (let zz = z + 1; zz < h; zz++) if (solid.has(x, y, zz)) { pz = false; break; }
+      return (px ? 1 : 0) + (py ? 1 : 0) + (pz ? 1 : 0) >= 2;
+    });
+    if (!readable) return false;
+  }
+
+  // Rule C: at least one lateral face (+x or +y) represented
   let anyPx = false, anyPy = false;
   for (const [x, y, z] of missing) {
-    if (!anyPx) { let ok = true; for (let xx = x+1; xx < w; xx++) if (solid.has(xx,y,z)) { ok=false; break; } if (ok) anyPx=true; }
-    if (!anyPy) { let ok = true; for (let yy = y+1; yy < d; yy++) if (solid.has(x,yy,z)) { ok=false; break; } if (ok) anyPy=true; }
+    if (!anyPx) { let ok = true; for (let xx = x + 1; xx < w; xx++) if (solid.has(xx, y, z)) { ok = false; break; } if (ok) anyPx = true; }
+    if (!anyPy) { let ok = true; for (let yy = y + 1; yy < d; yy++) if (solid.has(x, yy, z)) { ok = false; break; } if (ok) anyPy = true; }
     if (anyPx && anyPy) break;
   }
-  if (!anyPx || !anyPy) return false;
+  if (!anyPx && !anyPy) return false;
 
-  // Uvjet B — prazna ćelija mora biti jedna povezana regija.
-  const missingSet = new Set(missing.map(([x, y, z]) => x + "," + y + "," + z));
-  const seen = new Set([missing[0].join(",")]);
-  const stack = [missing[0]];
-  const dirs = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
-  while (stack.length) {
-    const [x, y, z] = stack.pop();
-    for (const [dx, dy, dz] of dirs) {
-      const k = (x+dx) + "," + (y+dy) + "," + (z+dz);
-      if (missingSet.has(k) && !seen.has(k)) { seen.add(k); stack.push([x+dx, y+dy, z+dz]); }
-    }
-  }
-  return seen.size === missing.length;
+  return true;
 }
 
 // Popuni svaku skrivenu šupljinu — što korisnik ne vidi iz izometrije,
