@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vježba projekcija — Nacrt / Tlocrt / Bokocrt</title>
+  <link rel="stylesheet" href="style.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.163.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.163.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="title">
+      <h1>Vježba projekcija</h1>
+      <p>Pogledaj tijelo u izometriji i nacrtaj nacrt, tlocrt i bokocrt.</p>
+    </div>
+    <div class="controls">
+      <label>Zadataka po razini:
+        <select id="per-level">
+          <option value="2">2</option>
+          <option value="3" selected>3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </label>
+      <label class="toggle-grid">
+        <input type="checkbox" id="show-grid"> Mreža
+      </label>
+      <button id="new-set" type="button">Novi set</button>
+      <button id="reveal-all" type="button">Sva rješenja</button>
+      <button id="print" type="button">Ispis</button>
+      <span id="seed-label" class="seed"></span>
+    </div>
+  </header>
+
+  <main id="exercises" class="exercises"></main>
+
+  <footer class="pagefoot">
+    <p>Puna linija = vidljivi brid · isprekidana linija = skriveni brid · 1 kocka = 10 cm</p>
+    <p class="buildstamp" id="buildstamp">build: rucni renderer + ntb smjer · 2026-06-05</p>
+  </footer>
+
+  <script>
+    // Prikaži stvarni SHA zadnjeg commita na gh-pages (potvrda da je live verzija svježa).
+    fetch('https://api.github.com/repos/pzenzerovic/pxt-aqbit/commits/gh-pages')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c) => {
+        if (!c || !c.sha) return;
+        const el = document.getElementById('buildstamp');
+        const when = (c.commit?.committer?.date || '').slice(0, 16).replace('T', ' ');
+        el.textContent = `commit ${c.sha.slice(0, 7)} · ${when} UTC`;
+      })
+      .catch(() => {});
+  </script>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

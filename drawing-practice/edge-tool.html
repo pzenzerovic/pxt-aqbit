@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="hr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Edge Tool — označi koji bridovi trebaju biti debeli</title>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, sans-serif; background: #eef2f6; color: #1f2d3d; }
+  header { background: #1f2d3d; color: #fff; padding: 12px 20px; }
+  header h1 { margin: 0; font-size: 18px; }
+  header p { margin: 4px 0 0; font-size: 13px; opacity: .85; }
+  .wrap { display: flex; gap: 20px; padding: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .panel { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 1px 6px #0002; }
+  .controls label { font-size: 13px; display: inline-flex; align-items: center; gap: 4px; margin-right: 10px; }
+  .controls input[type=number] { width: 48px; padding: 3px; }
+  .controls input[type=text] { width: 110px; padding: 3px; }
+  button { cursor: pointer; border: 1px solid #b8c2cc; background: #f6f8fa; border-radius: 6px; padding: 6px 12px; font-size: 13px; }
+  button:hover { background: #e9eef3; }
+  button.primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .layers { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+  .layer { }
+  .layer .lbl { font-size: 12px; color: #64748b; margin-bottom: 3px; }
+  .grid { display: inline-grid; gap: 2px; }
+  .cell { width: 22px; height: 22px; border: 1px solid #cbd5e1; border-radius: 3px; background: #fff; padding: 0; }
+  .cell.on { background: #64748b; border-color: #475569; }
+  svg.iso { background: #fff; border-radius: 8px; max-width: 640px; }
+  .legend { font-size: 13px; margin-top: 10px; line-height: 1.7; }
+  .legend span.sw { display: inline-block; width: 28px; height: 0; vertical-align: middle; margin-right: 6px; }
+  .hit { cursor: pointer; }
+  textarea { width: 100%; height: 220px; font-family: ui-monospace, monospace; font-size: 12px; margin-top: 8px; }
+  .count { font-size: 13px; color: #475569; margin-top: 8px; }
+  select { padding: 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Edge Tool — označi koje bridove treba prikazati DEBELOM linijom</h1>
+  <p>Klikni na brid u izometriji da promijeniš oznaku. Ciklus: <b>(trenutno)</b> → <b style="color:#16a34a">treba DEBELO</b> → <b style="color:#ea580c">treba TANKO</b> → natrag. Zatim klikni „Izvezi za Claude" i pošalji mi tekst.</p>
+</header>
+
+<div class="wrap">
+  <div class="panel controls" style="max-width:340px">
+    <div>
+      <strong>1) Nacrtaj tijelo</strong> (ili učitaj zadatak)
+    </div>
+    <div style="margin-top:10px">
+      <label>Š (x) <input id="dimW" type="number" min="1" max="6" value="3"></label>
+      <label>D (y) <input id="dimD" type="number" min="1" max="6" value="2"></label>
+      <label>V (z) <input id="dimH" type="number" min="1" max="6" value="3"></label>
+      <button id="rebuild">Postavi mrežu</button>
+    </div>
+    <div style="margin-top:8px">
+      <button id="fillAll">Popuni sve</button>
+      <button id="clearAll">Očisti</button>
+    </div>
+    <div style="margin-top:14px;border-top:1px solid #e2e8f0;padding-top:10px">
+      <label>seed <input id="seed" type="text" value="124117810"></label>
+      <button id="loadSeed">Generiraj 9 zadataka</button>
+      <div style="margin-top:6px">
+        <select id="taskSel"></select>
+        <button id="loadTask">Učitaj zadatak</button>
+      </div>
+    </div>
+    <div class="layers" id="layers"></div>
+  </div>
+
+  <div class="panel">
+    <strong>2) Klikaj bridove koji su krivo prikazani</strong>
+    <div id="isoHost" style="margin-top:10px"></div>
+    <div class="legend">
+      <div><span class="sw" style="border-top:3px solid #1a2a38"></span> trenutno DEBELO (silueta/pregib)</div>
+      <div><span class="sw" style="border-top:2px dashed #7e96a8"></span> trenutno TANKO (mreža)</div>
+      <div><span class="sw" style="border-top:3px solid #16a34a"></span> ti kažeš: treba DEBELO</div>
+      <div><span class="sw" style="border-top:3px solid #ea580c"></span> ti kažeš: treba TANKO</div>
+    </div>
+    <div class="count" id="count"></div>
+  </div>
+
+  <div class="panel" style="max-width:420px">
+    <strong>3) Izvezi za Claude</strong>
+    <div style="margin-top:8px">
+      <button class="primary" id="exportBtn">Izvezi za Claude</button>
+      <button id="copyBtn">Kopiraj</button>
+    </div>
+    <textarea id="out" readonly placeholder="Ovdje će se pojaviti tekst — kopiraj ga i pošalji Claudeu."></textarea>
+  </div>
+</div>
+
+<script type="module">
+import { isoModel } from './src/renderer.js';
+import { Solid } from './src/voxels.js';
+import { generateSet } from './src/generator.js';
+
+const SVGNS = 'http://www.w3.org/2000/svg';
+let W = 3, D = 2, H = 3;
+let cells = new Set();          // "x,y,z"
+let overrides = new Map();      // edge.key -> 'thick' | 'thin'
+let lastModel = null;
+
+const $ = id => document.getElementById(id);
+const ckey = (x,y,z) => `${x},${y},${z}`;
+
+function buildSolid() {
+  const s = new Solid();
+  for (const k of cells) { const [x,y,z] = k.split(',').map(Number); s.add(x,y,z); }
+  s.w = W; s.d = D; s.h = H;
+  return s;
+}
+
+// ---- voxel editor (layer by layer, z top→bottom) ----
+function renderLayers() {
+  const host = $('layers');
+  host.innerHTML = '';
+  for (let z = H - 1; z >= 0; z--) {
+    const layer = document.createElement('div');
+    layer.className = 'layer';
+    const lbl = document.createElement('div');
+    lbl.className = 'lbl';
+    lbl.textContent = `z = ${z} (visina ${z})`;
+    layer.appendChild(lbl);
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    grid.style.gridTemplateColumns = `repeat(${W}, 22px)`;
+    for (let y = 0; y < D; y++) {
+      for (let x = 0; x < W; x++) {
+        const b = document.createElement('button');
+        b.className = 'cell' + (cells.has(ckey(x,y,z)) ? ' on' : '');
+        b.title = `x${x} y${y} z${z}`;
+        b.onclick = () => {
+          const k = ckey(x,y,z);
+          if (cells.has(k)) cells.delete(k); else cells.add(k);
+          overrides.clear();
+          renderLayers(); renderIso();
+        };
+        grid.appendChild(b);
+      }
+    }
+    layer.appendChild(grid);
+    host.appendChild(layer);
+  }
+}
+
+// ---- iso render with clickable edges ----
+function renderIso() {
+  const solid = buildSolid();
+  const host = $('isoHost');
+  host.innerHTML = '';
+  if (cells.size === 0) { host.textContent = '(prazno — nacrtaj nešto)'; lastModel = null; updateCount(); return; }
+
+  const m = isoModel(solid, { scale: 40 });
+  lastModel = m;
+  const pad = 18;
+  const { minX, minY, maxX, maxY } = m.bbox;
+  const vbw = maxX - minX + pad*2, vbh = maxY - minY + pad*2;
+
+  const svg = document.createElementNS(SVGNS, 'svg');
+  svg.setAttribute('class', 'iso');
+  svg.setAttribute('viewBox', `${minX-pad} ${minY-pad} ${vbw} ${vbh}`);
+  svg.setAttribute('width', Math.min(640, vbw*1.0));
+
+  // ground
+  const gp = document.createElementNS(SVGNS, 'polygon');
+  gp.setAttribute('points', m.ground.corners.map(p => `${p[0]},${p[1]}`).join(' '));
+  gp.setAttribute('fill', '#eef2f6');
+  svg.appendChild(gp);
+  for (const [a,b] of m.ground.lines) {
+    const l = document.createElementNS(SVGNS, 'line');
+    l.setAttribute('x1', a[0]); l.setAttribute('y1', a[1]);
+    l.setAttribute('x2', b[0]); l.setAttribute('y2', b[1]);
+    l.setAttribute('stroke', '#cbd5e1'); l.setAttribute('stroke-width', .7);
+    l.setAttribute('stroke-dasharray', '4,4');
+    svg.appendChild(l);
+  }
+  // faces
+  for (const f of m.faces) {
+    const p = document.createElementNS(SVGNS, 'polygon');
+    p.setAttribute('points', f.pts.map(q => `${q[0]},${q[1]}`).join(' '));
+    p.setAttribute('fill', f.fill);
+    svg.appendChild(p);
+  }
+  // edges — crta se SAMO vidljivi dio (segmenti), isto kao na stranici
+  for (const e of m.edges) {
+    const corrected = overrides.has(e.key) && overrides.get(e.key) !== e.cls;
+    const eff = overrides.get(e.key) || e.cls;
+    for (const [q1, q2] of e.segments) {
+      const l = document.createElementNS(SVGNS, 'line');
+      l.setAttribute('x1', q1[0]); l.setAttribute('y1', q1[1]);
+      l.setAttribute('x2', q2[0]); l.setAttribute('y2', q2[1]);
+      l.setAttribute('vector-effect', 'non-scaling-stroke');
+      if (corrected && overrides.get(e.key) === 'thick') {
+        l.setAttribute('stroke', '#16a34a'); l.setAttribute('stroke-width', 3.5);
+      } else if (corrected && overrides.get(e.key) === 'thin') {
+        l.setAttribute('stroke', '#ea580c'); l.setAttribute('stroke-width', 3.5);
+      } else if (eff === 'thick') {
+        l.setAttribute('stroke', '#1a2a38'); l.setAttribute('stroke-width', 3);
+      } else {
+        l.setAttribute('stroke', '#7e96a8'); l.setAttribute('stroke-width', 2);
+        l.setAttribute('stroke-dasharray', '4,4');
+      }
+      svg.appendChild(l);
+    }
+  }
+  // clickable hit lines (wide, transparent) on top of each visible segment
+  for (const e of m.edges) {
+    for (const [q1, q2] of e.segments) {
+      const hit = document.createElementNS(SVGNS, 'line');
+      hit.setAttribute('x1', q1[0]); hit.setAttribute('y1', q1[1]);
+      hit.setAttribute('x2', q2[0]); hit.setAttribute('y2', q2[1]);
+      hit.setAttribute('stroke', 'transparent');
+      hit.setAttribute('stroke-width', 14);
+      hit.setAttribute('vector-effect', 'non-scaling-stroke');
+      hit.setAttribute('class', 'hit');
+      hit.onclick = () => cycleEdge(e);
+      svg.appendChild(hit);
+    }
+  }
+  host.appendChild(svg);
+  updateCount();
+}
+
+// cycle: (none) -> force thick -> force thin -> none
+function cycleEdge(e) {
+  const cur = overrides.get(e.key);
+  if (!cur) overrides.set(e.key, 'thick');
+  else if (cur === 'thick') overrides.set(e.key, 'thin');
+  else overrides.delete(e.key);
+  renderIso();
+}
+
+function updateCount() {
+  if (!lastModel) { $('count').textContent = ''; return; }
+  let corr = 0;
+  for (const e of lastModel.edges) {
+    const o = overrides.get(e.key);
+    if (o && o !== e.cls) corr++;
+  }
+  $('count').textContent = `Bridova ukupno: ${lastModel.edges.length} · ispravki: ${corr}`;
+}
+
+function exportText() {
+  if (!lastModel) return '(nema modela)';
+  const voxels = [...cells].map(k => `(${k})`).join(' ');
+  const lines = [];
+  lines.push(`# Edge ground-truth`);
+  lines.push(`dims WxDxH = ${W}x${D}x${H}`);
+  lines.push(`voxels = ${voxels}`);
+  lines.push(``);
+  lines.push(`# Bridovi koje Claude prikazuje KRIVO (treba promijeniti):`);
+  let any = false;
+  for (const e of lastModel.edges) {
+    const o = overrides.get(e.key);
+    if (o && o !== e.cls) {
+      any = true;
+      const [a, b] = e.key.split('|');
+      lines.push(`EDGE ${a} - ${b} | sada=${e.cls} TREBA=${o} | faces(top:${e.top} rx:${e.rx} ly:${e.ly})`);
+    }
+  }
+  if (!any) lines.push(`(nijedan brid nije označen kao kriv)`);
+  lines.push(``);
+  lines.push(`# Referenca — SVI bridovi i trenutna klasifikacija:`);
+  for (const e of lastModel.edges) {
+    const [a, b] = e.key.split('|');
+    lines.push(`  ${a} - ${b} : ${e.cls} (top:${e.top} rx:${e.rx} ly:${e.ly})`);
+  }
+  return lines.join('\n');
+}
+
+// ---- wiring ----
+$('rebuild').onclick = () => {
+  W = +$('dimW').value; D = +$('dimD').value; H = +$('dimH').value;
+  // drop out-of-range cells
+  for (const k of [...cells]) {
+    const [x,y,z] = k.split(',').map(Number);
+    if (x>=W||y>=D||z>=H) cells.delete(k);
+  }
+  overrides.clear();
+  renderLayers(); renderIso();
+};
+$('fillAll').onclick = () => {
+  cells.clear();
+  for (let x=0;x<W;x++) for (let y=0;y<D;y++) for (let z=0;z<H;z++) cells.add(ckey(x,y,z));
+  overrides.clear(); renderLayers(); renderIso();
+};
+$('clearAll').onclick = () => { cells.clear(); overrides.clear(); renderLayers(); renderIso(); };
+
+let genSet = null;
+$('loadSeed').onclick = () => {
+  const seed = Number($('seed').value) || 0;
+  genSet = generateSet(seed);
+  const sel = $('taskSel');
+  sel.innerHTML = '';
+  genSet.forEach((ex, i) => {
+    const o = document.createElement('option');
+    o.value = i;
+    o.textContent = `Zadatak ${i+1} (${ex.solid.w}×${ex.solid.d}×${ex.solid.h})`;
+    sel.appendChild(o);
+  });
+};
+$('loadTask').onclick = () => {
+  if (!genSet) return;
+  const ex = genSet[+$('taskSel').value];
+  const s = ex.solid;
+  W = s.w; D = s.d; H = s.h;
+  $('dimW').value = W; $('dimD').value = D; $('dimH').value = H;
+  cells.clear();
+  s.forEach((x,y,z) => cells.add(ckey(x,y,z)));
+  overrides.clear();
+  renderLayers(); renderIso();
+};
+
+$('exportBtn').onclick = () => { $('out').value = exportText(); };
+$('copyBtn').onclick = async () => {
+  $('out').value = $('out').value || exportText();
+  try { await navigator.clipboard.writeText($('out').value); $('copyBtn').textContent = 'Kopirano ✓'; setTimeout(()=>$('copyBtn').textContent='Kopiraj',1200);} catch(e){}
+};
+
+// initial: load the C-shape-ish default
+cells = new Set(['0,0,0','1,0,0','2,0,0','0,1,0','2,1,0','0,0,1','1,0,1','2,0,1','0,1,1','2,1,1']);
+W=3; D=2; H=2;
+$('dimW').value=3; $('dimD').value=2; $('dimH').value=2;
+renderLayers();
+renderIso();
+</script>
+</body>
+</html>

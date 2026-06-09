@@ -1,0 +1,184 @@
+:root {
+  --ink: #1f2d3d;
+  --muted: #6b7886;
+  --line: #dfe3e8;
+  --bg: #f7f9fb;
+  --card: #ffffff;
+  --accent: #2f6fed;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+}
+
+/* Topbar */
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.title h1 { margin: 0; font-size: 20px; }
+.title p { margin: 2px 0 0; color: var(--muted); font-size: 13px; }
+
+.controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.controls label { font-size: 13px; color: var(--muted); }
+.controls select { margin-left: 4px; padding: 4px 6px; }
+.controls button {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.controls button:hover { border-color: var(--accent); color: var(--accent); }
+#new-set { background: var(--accent); color: #fff; border-color: var(--accent); }
+#new-set:hover { color: #fff; opacity: 0.92; }
+.seed { font-size: 11px; color: var(--muted); font-family: monospace; }
+
+/* Exercises grid */
+.exercises {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+  gap: 18px;
+  padding: 24px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  break-inside: avoid;
+}
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+.num { font-weight: 600; }
+.badge {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: #fff;
+}
+.lvl-1 { background: #3aa76d; }
+.lvl-2 { background: #d99a2b; }
+.lvl-3 { background: #d9534f; }
+
+.card-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.iso-title, .ntb-title {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.iso-wrap .iso {
+  width: 100%;
+  height: auto;
+  max-height: 220px;
+}
+/* Debljina linija i duljina crtica u pikselima (neovisno o skaliranju SVG-a). */
+.iso line, .iso path { vector-effect: non-scaling-stroke; }
+.scale-note {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 4px;
+  text-align: center;
+}
+
+/* NTB layout — ISO 5456-2, prvo kutno projiciranje (1. kvadrant):
+   Nacrt | Bokocrt lijevi
+   Tlocrt | [simbol]                                                   */
+.ntb {
+  display: grid;
+  grid-template-columns: auto auto;
+  grid-template-areas:
+    "nacrt bokocrt"
+    "tlocrt spacer";
+  gap: 8px;
+  justify-content: start;
+}
+.cell { position: relative; }
+.cell.nacrt   { grid-area: nacrt; }
+.cell.bokocrt { grid-area: bokocrt; }
+.cell.tlocrt  { grid-area: tlocrt; }
+.cell.spacer  { grid-area: spacer; display: flex; align-items: flex-end; padding: 4px; }
+.vlabel {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.view {
+  display: block;
+  max-width: 160px;
+  height: auto;
+  background: #fff;
+}
+/* ISO simbol prvog kutnog projiciranja */
+.angle-symbol {
+  width: 44px;
+  height: auto;
+  opacity: 0.65;
+}
+
+.solution {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.card-foot { margin-top: 10px; }
+.toggle-sol {
+  padding: 6px 12px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.toggle-sol:hover { border-color: var(--accent); color: var(--accent); }
+
+.pagefoot {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  padding: 16px;
+}
+.buildstamp {
+  font-family: monospace;
+  font-size: 11px;
+  color: #98a2ad;
+  margin-top: 4px;
+}
+
+/* Ispis */
+@media print {
+  .topbar, .card-foot, .pagefoot { display: none; }
+  body { background: #fff; }
+  .exercises { display: block; padding: 0; }
+  .card { page-break-inside: avoid; border: none; padding: 0; margin-bottom: 26px; }
+  .solution { display: block; }
+}
